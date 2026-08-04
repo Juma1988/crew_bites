@@ -80,7 +80,6 @@ class SummaryOnboardingState extends State<SummaryOnboarding> {
   }
 
   void _finish() async {
-    _step = 4;
     await SummaryOnboarding.markDone();
     if (!mounted) return;
     _showOverlay(
@@ -91,7 +90,6 @@ class SummaryOnboardingState extends State<SummaryOnboarding> {
       onTap: () {
         _overlay?.remove();
         _overlay = null;
-        SummaryOnboarding.markDone();
       },
     );
   }
