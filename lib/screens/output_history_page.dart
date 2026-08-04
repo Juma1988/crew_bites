@@ -17,6 +17,7 @@ import '../models/order_models.dart';
 import '../models/output_args.dart';
 import '../models/restaurant_group.dart';
 import '../widgets/section_card.dart';
+import '../widgets/summary_onboarding.dart';
 import '../widgets/wizard_step_bar.dart';
 import 'homepage.dart';
 import 'add_orders_page.dart';
@@ -43,6 +44,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
   final _wholeOrderKey = GlobalKey();
   final _whoOrderedKey = GlobalKey();
   final _actionsKey = GlobalKey();
+  final _summaryOnboardingKey = GlobalKey<SummaryOnboardingState>();
   int _swipeDownCount = 0;
   bool _neonUnlocked = false;
   bool _unlocking = false;
@@ -500,7 +502,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
         final current = _current;
         final hasCurrent = current != null && current.hasContent;
 
-        return Scaffold(
+        return SummaryOnboarding(key: _summaryOnboardingKey, child: Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
@@ -742,6 +744,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
         ),
       ],
     ),
+  ),
   );
       },
     );

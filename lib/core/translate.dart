@@ -836,4 +836,27 @@ class Translate {
         'Swipe a food card to undo one item for the selected person. Empty cards get removed entirely.',
         'اسحب بطاقة الأكل عشان ترجع واحدة للشخص المختار. البطاقات الفاضية بتتمسح.',
       );
+
+  // ── Summary page onboarding ────────────────────────────────────────
+
+  String get obSummaryTitle => _tr('Here\'s your order 📋', 'الطلب بتاعك 📋');
+
+  String get obSummaryBody => _tr(
+        'See the full breakdown: what was ordered, how many, and who got what.',
+        'شوف التفاصيل: إيه اللي اتكمل، كام واحدة، ومين أخد إيه.',
+      );
+
+  String get obShareTitle => _tr('Share it! 📤', 'شاركه! 📤');
+
+  String get obShareBody => _tr(
+        'Tap Share to send the order as text to your group chat or copy it.',
+        'دوس شارك عشان تبعت الطلب كنص في شات الجروب أو تنسخه.',
+      );
+
+  String get obBundleSaveTitle => _tr('Save for next time 💾', 'احفظ للمرة الجاية 💾');
+
+  String get obBundleSaveBody => _tr(
+        'Like this order? Save it as a bundle to load it instantly next time!',
+        'عجبك الطلب؟ احفظه كباقة عشان تنزّله في ثانية المرة الجاية!',
+      );
 }

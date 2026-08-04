@@ -116,6 +116,7 @@ abstract final class AppValues {
   // ── Onboarding ─────────────────────────────────────────────────────
   static const String prefsOnboardingDone = 'onboarding_done';
   static const String prefsOrdersOnboardingDone = 'orders_onboarding_done';
+  static const String prefsSummaryOnboardingDone = 'summary_onboarding_done';
 
   // ── Currency ────────────────────────────────────────────────────────
 
