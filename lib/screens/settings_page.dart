@@ -451,6 +451,11 @@ class _SettingsPageState extends State<SettingsPage> {
                               question: strings.faqPrivacy,
                               answer: strings.faqPrivacyBody,
                             ),
+                            const SizedBox(height: 14),
+                            _FaqRow(
+                              question: strings.faqSwipeTitle,
+                              answer: strings.faqSwipeBody,
+                            ),
                           ],
                         ),
                       ),

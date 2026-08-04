@@ -629,6 +629,16 @@ class Translate {
         'أيوه — الأسامي والطلبات والأسعار مبتخرجش من موبايلك.',
       );
 
+  String get faqSwipeTitle => _tr(
+        'How do I manage friends?',
+        'إزاي أManage الأصحاب؟',
+      );
+
+  String get faqSwipeBody => _tr(
+        'Swipe right ⭐ to add a friend to favorites — they\'ll stay for every order. Swipe left 🗑️ to remove someone. You can always add them back!',
+        'اسحب يمين ⭐ عشان تعمّل صاحبك مفضلة — بيفضل في كل طلب. اسحب شمال 🗑️ عشان تشيل حد. تقدر تضيفه تاني!',
+      );
+
   String get whatsNewTitle => _tr("What's new", 'إيه الجديد');
 
   // ── Future features (roadmap card in Settings) ──────────────────────
@@ -749,5 +759,81 @@ class Translate {
   String get specialFoodHint => _tr(
         'Long-press to set amount',
         'اضغط مطول عشان تحط المبلغ',
+      );
+
+  // ── Onboarding ─────────────────────────────────────────────────────
+
+  String get onboardingStep1Title => _tr(
+        'Meet your first friend!',
+        'أول صاحب!',
+      );
+
+  String get onboardingStep1Body => _tr(
+        'This is where your crew lives. Tap a name to select them for the order.',
+        ' هنا أصحابك بيظهروا. دوس على الاسم عشان تختاره للطلب.',
+      );
+
+  String get onboardingStep2Title => _tr(
+        'Star your favorites ⭐',
+        'عمل مفضلة ⭐',
+      );
+
+  String get onboardingStep2Body => _tr(
+        'Swipe right on a name to make them a favorite. Fav friends stick around for every order!',
+        'اسحب يمين على الاسم عشان تعمّله مفضلة. الأصحاب المفضلين بيفضلوا في كل طلب!',
+      );
+
+  String get onboardingStep3Title => _tr(
+        'Need to remove someone?',
+        'عايز تشيل حد؟',
+      );
+
+  String get onboardingStep3Body => _tr(
+        'Swipe left to remove a name. No worries — you can always add them back!',
+        'اسحب شمال عشان تشيل الاسم. متقلقش — تقدر تضيفه تاني!',
+      );
+
+  String get onboardingDoneTitle => _tr(
+        "You're all set!",
+        'خلصنا!',
+      );
+
+  String get onboardingDoneBody => _tr(
+        'You know the basics. Need a refresher? Check Settings > Help anytime.',
+        'عارف الأساسيات. محتاج تاني؟ شوف الإعدادات > مساعدة في أي وقت.',
+      );
+
+  String get onboardingNext => _tr('Got it!', 'فهمت!');
+
+  String get onboardingDone => _tr("Let's go!", 'يلا!');
+
+  // ── Orders page onboarding ─────────────────────────────────────────
+
+  String get obPricesTitle => _tr('Track costs 💰', 'تتبع التكاليف 💰');
+
+  String get obPricesBody => _tr(
+        'Tap Prices to turn on cost tracking. Set a price per food and see each person\'s total.',
+        'دوس الأسعار عشان تشغل تتبع التكاليف. حط سعر لكل أكلة وشوف كل واحد بيده كام.',
+      );
+
+  String get obServicesTitle => _tr('Tip & delivery 🛵', 'بقشيش وتوصيل 🛵');
+
+  String get obServicesBody => _tr(
+        'Long-press the Services card to add tip or delivery fees. They split automatically between everyone.',
+        'اضغط مطول على بطاقة الخدمات عشان تضيف بقشيش أو توصيل. بتتقسم تلقائي بين الكل.',
+      );
+
+  String get obBundlesTitle => _tr('Save time with bundles ⏱️', 'وفّر الوقت بالباقات ⏱️');
+
+  String get obBundlesBody => _tr(
+        'Tap a bundle to load a restaurant\'s menu instantly. You can create your own from any order!',
+        'دوس على باقة عشان تنزل منيو مطعم في ثانية. تقدر تعمل باقة من أي طلب!',
+      );
+
+  String get obUndoTitle => _tr('Made a mistake? ↩️', 'غلطت؟ ↩️');
+
+  String get obUndoBody => _tr(
+        'Swipe a food card to undo one item for the selected person. Empty cards get removed entirely.',
+        'اسحب بطاقة الأكل عشان ترجع واحدة للشخص المختار. البطاقات الفاضية بتتمسح.',
       );
 }

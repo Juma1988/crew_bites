@@ -218,7 +218,7 @@ class _BundleItemsEditorSheetState extends State<BundleItemsEditorSheet> {
                     : ListView.separated(
                         shrinkWrap: true,
                         itemCount: _items.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 6),
+                        separatorBuilder: (a, b) => const SizedBox(height: 6),
                         itemBuilder: (context, i) {
                           return Material(
                             color: scheme.surfaceContainerHighest

@@ -34,7 +34,7 @@ Future<void> main(List<String> args) async {
         'jsonrpc': '2.0',
         'id': id,
         'method': method,
-        'params': ?params,
+        'params': params ?? {},
       }),
     );
     return c.future.timeout(const Duration(seconds: 10));

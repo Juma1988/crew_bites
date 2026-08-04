@@ -248,6 +248,7 @@ class _FoodTileState extends State<FoodTile>
                                   ),
                                   child: Wrap(
                                     key: ValueKey(_assigneeSignature),
+                                    alignment: WrapAlignment.start,
                                     spacing: 4,
                                     runSpacing: 4,
                                     children: [

@@ -23,6 +23,7 @@ import 'add_orders/widgets/food_swipe_bg.dart';
 import 'add_orders/widgets/food_tile.dart';
 import 'add_orders/widgets/missing_prices_dialog.dart';
 import 'add_orders/widgets/bundle_items_editor_sheet.dart';
+import '../widgets/orders_onboarding.dart';
 
 /// Split layout: people (left) · food menu (right).
 /// Bundle pills at top load short placeholder menus.
@@ -54,6 +55,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
   final _crewKey = GlobalKey();
   final _foodsKey = GlobalKey();
   final _nextKey = GlobalKey();
+  final _ordersOnboardingKey = GlobalKey<OrdersOnboardingState>();
 
   static const t = Translate();
 
@@ -404,6 +406,9 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
         unitPrice: session.priceForTitle(foodTitle),
       ),
     );
+    if (mounted) {
+      _ordersOnboardingKey.currentState?.onFoodAssigned();
+    }
   }
 
   /// Undo one unit for selected person on [foodTitle] (−1).
@@ -829,7 +834,9 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
           for (final (i, p) in people.indexed) p.id: i,
         };
 
-        return Scaffold(
+        return OrdersOnboarding(
+          key: _ordersOnboardingKey,
+          child: Scaffold(
         body: Stack(
           children: [
             Positioned.fill(
@@ -995,7 +1002,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                   Expanded(
                                     child: ListView.separated(
                                       itemCount: people.length,
-                                      separatorBuilder: (_, _) =>
+                                      separatorBuilder: (a, b) =>
                                           const SizedBox(height: 6),
                                       itemBuilder: (context, i) {
                                         final p = people[i];
@@ -1067,7 +1074,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                         // Always show food rows + a full-width + card.
                                         return ListView.separated(
                                           itemCount: menuFoods.length + 1,
-                                          separatorBuilder: (_, _) =>
+                                          separatorBuilder: (a, b) =>
                                               const SizedBox(height: 8),
                                           itemBuilder: (context, i) {
                                             if (i == menuFoods.length) {
@@ -1238,8 +1245,9 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                   ),
                 ),
               ),
-      );
-      },
+              ),
+       );
+       },
     );
   }
 }

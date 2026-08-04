@@ -14,6 +14,7 @@ import '../core/translate.dart';
 import '../core/values/app_values.dart';
 import '../models/order_models.dart';
 import '../support/dialog/add_users_dialog.dart';
+import '../widgets/onboarding_overlay.dart';
 import '../widgets/wizard_step_bar.dart';
 import 'add_orders_page.dart';
 
@@ -33,6 +34,7 @@ class _AddUserPageState extends State<AddUserPage> {
   final _listKey = GlobalKey();
   final _addKey = GlobalKey();
   final _nextKey = GlobalKey();
+  final _onboardingKey = GlobalKey<OnboardingOverlayState>();
 
   @override
   void initState() {
@@ -71,6 +73,9 @@ class _AddUserPageState extends State<AddUserPage> {
           ),
         ),
       );
+    }
+    if (ok && mounted) {
+      _onboardingKey.currentState?.onPersonAdded(_crew.names.length);
     }
   }
 
@@ -330,7 +335,9 @@ class _AddUserPageState extends State<AddUserPage> {
 
         final names = _crew.names;
 
-        return Scaffold(
+        return OnboardingOverlay(
+          key: _onboardingKey,
+          child: Scaffold(
           body: Stack(
             children: [
               Positioned.fill(
@@ -442,7 +449,7 @@ class _AddUserPageState extends State<AddUserPage> {
                             : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
                         itemCount: names.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 10),
+                        separatorBuilder: (a, b) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final name = names[index];
                           final selected = _crew.selected.contains(name);
@@ -631,8 +638,9 @@ class _AddUserPageState extends State<AddUserPage> {
               ),
             ),
           ),
+          ),
         );
-      },
+        },
     );
   }
 }

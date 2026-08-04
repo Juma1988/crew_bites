@@ -113,6 +113,10 @@ abstract final class AppValues {
   // ── Easter eggs ─────────────────────────────────────────────────────
   static const String prefsNeonUnlocked = 'easter_egg_neon_unlocked';
 
+  // ── Onboarding ─────────────────────────────────────────────────────
+  static const String prefsOnboardingDone = 'onboarding_done';
+  static const String prefsOrdersOnboardingDone = 'orders_onboarding_done';
+
   // ── Currency ────────────────────────────────────────────────────────
 
   /// Supported currency codes (display suffixes live in Translate).
@@ -160,33 +164,32 @@ abstract final class AppValues {
   ];
 
   static const List<String> personEmojis = [
-    '😂',
-    '🤣',
-    '😜',
-    '🤪',
-    '🥳',
-    '😎',
-    '🤓',
-    '🤠',
-    '😺',
-    '😹',
-    '🦊',
-    '🐼',
-    '🐨',
-    '🦄',
-    '🐸',
-    '🐵',
-    '🐧',
     '🍕',
     '🌮',
     '🍩',
     '🍦',
     '🥑',
-    '🔥',
-    '⭐',
-    '🌈',
-    '🤖',
-    '👻',
-    '🚀',
+    '🍔',
+    '🍟',
+    '🥗',
+    '🍣',
+    '🍜',
+    '🧆',
+    '🌯',
+    '🥞',
+    '🧀',
+    '🍿',
+    '🥤',
+    '☕',
+    '🫒',
+    '🍗',
+    '🥙',
+    '🫔',
+    '🧁',
+    '🍰',
+    '🍪',
+    '🫘',
+    '🥘',
+    '🍝',
   ];
 }
