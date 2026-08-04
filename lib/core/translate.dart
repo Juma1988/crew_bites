@@ -542,6 +542,17 @@ class Translate {
 
   String get contactSupport => _tr('Contact support', 'تواصل مع الدعم');
 
+  String get supportUs => _tr('Support us', 'ادعمنا');
+
+  String get supportUsBody => _tr(
+        'Enjoying Crew Bites? Support the developer!',
+        'عجباك Crew Bites؟ ادعم المطور!',
+      );
+
+  String get supportKofi => _tr('Buy me a coffee', 'ادّيني كوباية قهوة ☕');
+
+  String get supportInstapay => _tr('InstaPay (EG only)', 'انستاباي (مصر بس)');
+
   String get settingsHelp => _tr('Help', 'مساعدة');
 
   String get howToIntro => _tr(

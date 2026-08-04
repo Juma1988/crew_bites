@@ -87,6 +87,24 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Future<void> _launchUrl(String url) async {
+    AppHaptics.selectionClick();
+    final uri = Uri.parse(url);
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.emailOpenFailed)),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.emailOpenFailed)),
+      );
+    }
+  }
+
   void _onToggleSection(String id, bool expanding) {
     setState(() {
       _expandedSection = expanding ? id : null;
@@ -432,6 +450,43 @@ class _SettingsPageState extends State<SettingsPage> {
                             _FaqRow(
                               question: strings.faqPrivacy,
                               answer: strings.faqPrivacyBody,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      _CollapsibleCard(
+                        sectionId: 'support',
+                        isExpanded: _expandedSection == 'support',
+                        onToggle: _onToggleSection,
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                        icon: Icons.favorite_outline_rounded,
+                        title: strings.supportUs,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              strings.supportUsBody,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            OutlinedButton.icon(
+                              onPressed: () => _launchUrl(
+                                'https://ko-fi.com/i1988',
+                              ),
+                              icon: const Icon(Icons.coffee_outlined),
+                              label: Text(strings.supportKofi),
+                            ),
+                            const SizedBox(height: 10),
+                            OutlinedButton.icon(
+                              onPressed: () => _launchUrl(
+                                'https://ipn.eg/S/i.juma1988/instapay/4Fjcw3',
+                              ),
+                              icon: const Icon(Icons.account_balance_wallet_outlined),
+                              label: Text(strings.supportInstapay),
                             ),
                           ],
                         ),
