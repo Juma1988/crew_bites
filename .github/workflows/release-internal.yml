@@ -1,0 +1,46 @@
+name: Release to Internal
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.27.0"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Test
+        run: flutter test
+
+      - name: Decode keystore
+        run: echo "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" | base64 -d > android/keystore/upload-keystore.jks
+
+      - name: Create key.properties
+        run: |
+          cat > android/key.properties << EOF
+          storePassword=${{ secrets.SIGNING_STORE_PASSWORD }}
+          keyPassword=${{ secrets.SIGNING_KEY_PASSWORD }}
+          keyAlias=${{ secrets.SIGNING_KEY_ALIAS }}
+          storeFile=keystore/upload-keystore.jks
+          EOF
+
+      - name: Deploy to internal
+        run: bundle exec fastlane deploy_internal
+        env:
+          GOOGLE_PLAY_JSON_KEY: ${{ secrets.SERVICE_ACCOUNT_JSON_PLAINTEXT }}

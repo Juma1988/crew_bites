@@ -1,0 +1,6 @@
+# Copy to key.properties (gitignored) and fill in real values.
+# Generate keystore once — backup offline forever.
+storePassword=YOUR_STORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=upload
+storeFile=keystore/upload-keystore.p12

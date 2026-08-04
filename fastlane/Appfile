@@ -1,0 +1,2 @@
+json_key_file("") # Path to the json secret file - follow README setup
+package_name("com.i1988.crewbites") # e.g. com.krausefx.app

@@ -1,0 +1,2 @@
+First public release of Crew Bites.
+Group orders: friends → food → summary. Prices, bundles, history, AR+EN.

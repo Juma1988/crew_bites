@@ -1,0 +1,50 @@
+# Google Play listing — English (paste into Console)
+
+## Short description (≤ 80 characters)
+Crew Bites — group food orders. Everyone knows who ordered what.
+
+## Full description
+Crew Bites helps friends order food together without the chaos.
+
+Pick who’s eating, assign food, turn prices on if you need them, then share a clear list.
+
+• Friends with emoji + favorites  
+• Bundles (quick menus)  
+• Prices on/off  
+• Last 3 orders in history  
+• Arabic + English  
+• Spotlight tips on first visit  
+
+Your data stays on this phone — no account, no ads, no cloud upload of orders.
+
+Tagline: Everyone knows their food.
+
+## What’s new (1.0.0)
+First public release of Crew Bites.
+Group orders: friends → food → summary. Prices, bundles, history, AR+EN.
+
+## Category
+Food & Drink (or Productivity)
+
+## Contact
+i1988.support@gmail.com
+
+## Privacy policy URL (Play Console only — not needed for offline daily use)
+Only required when publishing to Google Play. App already has full policy
+in Settings → Privacy (offline). Host assets/legal/privacy_en.md on any
+HTTPS page later if/when you submit to Play.
+
+## Data safety (honest answers)
+• Data collected: App activity / other — stored on device only (order history, names).  
+• Data shared: No  
+• Encrypted in transit: N/A for local storage; sharing uses the app the user picks  
+• Users can request deletion: uninstall / clear app data  
+• Account required: No  
+• Ads: No  
+• IAP: No  
+
+## Assets (in store/assets/)
+• play_icon_512.png — high-res icon  
+• icon_1024.png — master  
+• feature_graphic_1024x500.png — feature graphic  
+• Capture screenshots on device (Home, friends, food+prices, summary, history)

@@ -1,0 +1,31 @@
+default_platform(:android)
+
+platform :android do
+  desc "Build release AAB"
+  lane :build do
+    gradle(task: "clean bundleRelease")
+  end
+
+  desc "Deploy to internal testing track"
+  lane :deploy_internal do
+    build
+    upload_to_play_store(
+      track: "internal",
+      aab: "app/build/outputs/bundle/release/app-release.aab",
+      skip_upload_metadata: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: false
+    )
+  end
+
+  desc "Capture screenshots"
+  lane :screenshots do
+    gradle(task: "clean assembleDebug")
+    screengrab(
+      app_package_name: "com.i1988.crewbites",
+      use_tests_in_package: "com.i1988.crewbites",
+      app_apk_path: "app/build/outputs/apk/debug/app-debug.apk",
+      device_serial: ENV["DEVICE_SERIAL"]
+    )
+  end
+end
