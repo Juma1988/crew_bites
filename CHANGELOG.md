@@ -19,8 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 - Delivery field moved above Tip — sets the bill the tip % scales from
-- Tip amount and Tip % are now mutually exclusive (one grays out the other)
-- Tip suggestion chips show honest rounded totals
+- Tip % now scales from food + delivery (delivery added to the base)
+- Tip amount and Tip % are mutually exclusive (one grays out the other)
+- Removed tip suggestions (replaced by direct amount / % entry)
 - "Services" renamed to "Tip & delivery" throughout
 - Added Qatari Riyal (ر.ق); Saudi Riyal now shows the ﷼ sign
 - `main.dart` cleaned up: routes, locales, navigator and bootstrap extracted

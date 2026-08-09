@@ -45,7 +45,7 @@ Crew Bites 1.0.5 — smarter bill splitting!
 
 • Split tip & delivery equally or by each person's order value
 • Round each share to a whole number so totals add up exactly
-• Tip as a % of your food subtotal (or pick a suggestion)
+• Tip as a % of your order (food + delivery)
 • Tap the Tip & delivery card to edit — no long-press
 • Reminder to keep unfavorited friends before you order
 • Tap the empty friends card to add your first friend
