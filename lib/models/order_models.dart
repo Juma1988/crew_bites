@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../core/extras_split_mode.dart';
 import '../core/values/app_values.dart';
 
 /// One friend in the group — name + color + funny emoji avatar.
@@ -16,6 +17,7 @@ class Person {
 
   final String id;
   final String name;
+
   /// Kept for prefs compatibility; UI uses [initials] instead.
   final String emoji;
   final int colorValue;
@@ -39,9 +41,7 @@ class Person {
     if (s.isEmpty) {
       final trimmed = name.trim();
       if (trimmed.isEmpty) return '?';
-      return trimmed
-          .substring(0, trimmed.length >= 2 ? 2 : 1)
-          .toUpperCase();
+      return trimmed.substring(0, trimmed.length >= 2 ? 2 : 1).toUpperCase();
     }
     return s.toUpperCase();
   }
@@ -146,6 +146,7 @@ class OrderSession {
     this.groupName,
     this.foodPrices = const {},
     this.tipAmount = 0,
+    this.tipPercent,
     this.deliveryFee = 0,
   });
 
@@ -167,19 +168,31 @@ class OrderSession {
   /// Optional tip for whole order (offline one-phone mode).
   final double tipAmount;
 
+  /// Tip as a % of the food subtotal (optional). When set, it wins over
+  /// [tipAmount] and recomputes live as foods change.
+  final double? tipPercent;
+
   /// Optional delivery fee for whole order.
   final double deliveryFee;
+
+  /// The tip actually applied: % of food subtotal when [tipPercent] is
+  /// set, otherwise the fixed [tipAmount].
+  double get effectiveTip {
+    if (tipPercent != null && tipPercent! > 0) {
+      return orderTotal * tipPercent! / 100;
+    }
+    return tipAmount;
+  }
 
   bool get isEmpty => people.isEmpty && lines.isEmpty;
   bool get hasContent => people.isNotEmpty || lines.isNotEmpty;
   int get itemCount => lines.fold(0, (sum, l) => sum + l.qty);
 
   /// Food subtotal only (no tip / delivery).
-  double get orderTotal =>
-      lines.fold(0.0, (sum, l) => sum + l.lineTotal);
+  double get orderTotal => lines.fold(0.0, (sum, l) => sum + l.lineTotal);
 
   /// Food + tip + delivery.
-  double get grandTotal => orderTotal + tipAmount + deliveryFee;
+  double get grandTotal => orderTotal + effectiveTip + deliveryFee;
 
   bool get hasPlace =>
       groupId != null &&
@@ -199,18 +212,93 @@ class OrderSession {
       people.where((p) => linesFor(p.id).isNotEmpty).toList();
 
   /// Share of tip+delivery for [personId].
-  /// Split equally among all people on the order.
-  double personExtrasShare(String personId) {
-    final extras = tipAmount + deliveryFee;
+  /// [even] splits equally among all people on the order.
+  /// [byValue] splits proportionally to each person's food total;
+  /// people with no food pay 0, and it falls back to even when the
+  /// order has no priced food.
+  double personExtrasShare(
+    String personId, {
+    ExtrasSplitMode mode = ExtrasSplitMode.even,
+  }) {
+    final extras = effectiveTip + deliveryFee;
     if (extras <= 0) return 0;
     if (people.isEmpty) return 0;
     if (!people.any((p) => p.id == personId)) return 0;
+    if (mode == ExtrasSplitMode.byValue) {
+      final food = orderTotal;
+      final mine = personTotal(personId);
+      if (food > 0 && mine > 0) return extras * mine / food;
+      if (food <= 0) return extras / people.length;
+      return 0;
+    }
     return extras / people.length;
   }
 
   /// Food + tip/delivery share for one person.
-  double personGrandTotal(String personId) =>
-      personTotal(personId) + personExtrasShare(personId);
+  double personGrandTotal(
+    String personId, {
+    ExtrasSplitMode mode = ExtrasSplitMode.even,
+  }) =>
+      personTotal(personId) + personExtrasShare(personId, mode: mode);
+
+  /// Share of tip+delivery for [personId], rounded to a whole unit when
+  /// [round] is true (largest-remainder: all shares sum to the extras).
+  double personExtrasShareFor(
+    String personId, {
+    required ExtrasSplitMode mode,
+    required bool round,
+  }) {
+    if (!round) return personExtrasShare(personId, mode: mode);
+    return roundedExtrasShares(mode: mode)[personId] ?? 0;
+  }
+
+  /// Grand total for [personId], with the extras share rounded to a whole
+  /// unit when [round] is true. Rounded grand totals sum to [grandTotal].
+  double personGrandTotalFor(
+    String personId, {
+    required ExtrasSplitMode mode,
+    required bool round,
+  }) {
+    if (!round) return personGrandTotal(personId, mode: mode);
+    return personTotal(personId) +
+        (roundedExtrasShares(mode: mode)[personId] ?? 0);
+  }
+
+  /// Whole-number extras shares that sum exactly to tip+delivery, using
+  /// largest-remainder (Hamilton) rounding. People owed 0 are excluded.
+  Map<String, double> roundedExtrasShares({
+    ExtrasSplitMode mode = ExtrasSplitMode.even,
+  }) {
+    final extras = effectiveTip + deliveryFee;
+    if (extras <= 0) return {};
+    final raw = <String, double>{};
+    for (final p in people) {
+      final share = personExtrasShare(p.id, mode: mode);
+      if (share > 0) raw[p.id] = share;
+    }
+    if (raw.isEmpty) return {};
+
+    final rounded = <String, double>{};
+    var floorSum = 0.0;
+    for (final e in raw.entries) {
+      final floor = e.value.floorToDouble();
+      rounded[e.key] = floor;
+      floorSum += floor;
+    }
+
+    var diff = (extras - floorSum).round();
+    if (diff != 0) {
+      final order = raw.entries.toList()
+        ..sort((a, b) => (b.value - b.value.floorToDouble())
+            .compareTo(a.value - a.value.floorToDouble()));
+      final count = diff.abs() > order.length ? order.length : diff.abs();
+      for (var i = 0; i < count; i++) {
+        final id = order[i].key;
+        rounded[id] = rounded[id]! + (diff > 0 ? 1 : -1);
+      }
+    }
+    return rounded;
+  }
 
   /// Whole-order rollup: each food title → total units (and price if set).
   List<FoodAggregate> aggregateFoods() {
@@ -254,8 +342,10 @@ class OrderSession {
     String? groupName,
     Map<String, double>? foodPrices,
     double? tipAmount,
+    double? tipPercent,
     double? deliveryFee,
     bool clearGroup = false,
+    bool clearTipPercent = false,
   }) {
     return OrderSession(
       id: id ?? this.id,
@@ -267,6 +357,7 @@ class OrderSession {
       groupName: clearGroup ? null : (groupName ?? this.groupName),
       foodPrices: foodPrices ?? this.foodPrices,
       tipAmount: tipAmount ?? this.tipAmount,
+      tipPercent: clearTipPercent ? null : (tipPercent ?? this.tipPercent),
       deliveryFee: deliveryFee ?? this.deliveryFee,
     );
   }
@@ -281,6 +372,7 @@ class OrderSession {
         groupName: groupName,
         foodPrices: Map<String, double>.from(foodPrices),
         tipAmount: tipAmount,
+        tipPercent: tipPercent,
         deliveryFee: deliveryFee,
       );
 
@@ -294,6 +386,7 @@ class OrderSession {
         if (groupName != null) 'groupName': groupName,
         if (foodPrices.isNotEmpty) 'foodPrices': foodPrices,
         if (tipAmount > 0) 'tipAmount': tipAmount,
+        if (tipPercent != null && tipPercent! > 0) 'tipPercent': tipPercent,
         if (deliveryFee > 0) 'deliveryFee': deliveryFee,
       };
 
@@ -323,6 +416,7 @@ class OrderSession {
       groupName: json['groupName'] as String?,
       foodPrices: prices,
       tipAmount: (json['tipAmount'] as num?)?.toDouble() ?? 0,
+      tipPercent: (json['tipPercent'] as num?)?.toDouble(),
       deliveryFee: (json['deliveryFee'] as num?)?.toDouble() ?? 0,
     );
   }
@@ -337,7 +431,8 @@ class OrderSession {
   }
 
   /// Decode or return null and set [corrupt] when JSON is broken.
-  static OrderSession? decodeChecked(String? raw, {void Function()? onCorrupt}) {
+  static OrderSession? decodeChecked(String? raw,
+      {void Function()? onCorrupt}) {
     if (raw == null || raw.isEmpty) return null;
     try {
       return OrderSession.fromJson(jsonDecode(raw) as Map<String, dynamic>);

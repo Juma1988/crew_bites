@@ -3,12 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:app_101/core/friend_icon_style.dart';
+import 'package:app_101/core/app_navigator.dart';
 import 'package:app_101/core/states/app_settings.dart';
 import 'package:app_101/core/states/crew_store.dart';
 import 'package:app_101/core/states/order_store.dart';
 import 'package:app_101/core/translate.dart';
 import 'package:app_101/core/values/app_values.dart';
-import 'package:app_101/main.dart';
+import 'package:app_101/app.dart';
 import 'package:app_101/models/order_models.dart';
 import 'package:app_101/models/output_args.dart';
 import 'package:app_101/models/restaurant_group.dart';
@@ -50,7 +51,8 @@ void main() {
   });
 
   test('friend icon marks follow the selected style', () {
-    final p = Person(id: 'p1', name: 'Ali', emoji: '😎', colorValue: 0xFF4D96FF);
+    final p =
+        Person(id: 'p1', name: 'Ali', emoji: '😎', colorValue: 0xFF4D96FF);
     expect(friendIconMark(p, FriendIconStyle.emoji, 0), '😎');
     expect(friendIconMark(p, FriendIconStyle.roman, 0), 'I');
     expect(friendIconMark(p, FriendIconStyle.roman, 2), 'III');
@@ -129,8 +131,10 @@ void main() {
       (tester) async {
     await AppSettings.instance.setFriendIconStyle(FriendIconStyle.roman);
     // Seed some names into the roster so Roman numeral labels appear.
-    await CrewStore.instance.addPerson(name: 'Alex', colorValue: 0xFF4D96FF, emoji: '😎');
-    await CrewStore.instance.addPerson(name: 'Sam', colorValue: 0xFFFF6B6B, emoji: '🙂');
+    await CrewStore.instance
+        .addPerson(name: 'Alex', colorValue: 0xFF4D96FF, emoji: '😎');
+    await CrewStore.instance
+        .addPerson(name: 'Sam', colorValue: 0xFFFF6B6B, emoji: '🙂');
 
     await tester.pumpWidget(const App101());
     await tester.pump();
@@ -156,7 +160,8 @@ void main() {
         Person(id: 'p1', name: 'Ali', emoji: '😎', colorValue: 0xFF4D96FF),
       ],
       lines: [
-        OrderLine(id: 'l1', personId: 'p1', title: 'Koshary', qty: 1, price: 40),
+        OrderLine(
+            id: 'l1', personId: 'p1', title: 'Koshary', qty: 1, price: 40),
       ],
       tipAmount: 12,
       deliveryFee: 0,
@@ -173,7 +178,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Prices off (default) → no Services row.
+     // Prices off (default) → no Tip & delivery row.
     expect(find.text('الخدمات'), findsNothing);
 
     await AppSettings.instance.setPricesEnabled(true);
@@ -320,7 +325,8 @@ void main() {
         Person(id: 'p1', name: 'Ali', emoji: '😎', colorValue: 0xFF4D96FF),
       ],
       lines: [
-        OrderLine(id: 'l1', personId: 'p1', title: 'Koshary', qty: 1, price: 40),
+        OrderLine(
+            id: 'l1', personId: 'p1', title: 'Koshary', qty: 1, price: 40),
         OrderLine(id: 'l2', personId: 'p1', title: 'Soup', qty: 1, price: 20),
       ],
     );
@@ -373,7 +379,8 @@ void main() {
         Person(id: 'p1', name: 'Ali', emoji: '😎', colorValue: 0xFF4D96FF),
       ],
       lines: [
-        OrderLine(id: 'l1', personId: 'p1', title: 'Koshary', qty: 1, price: 40),
+        OrderLine(
+            id: 'l1', personId: 'p1', title: 'Koshary', qty: 1, price: 40),
       ],
     );
     await OrderStore.saveCurrent(session, prefs);

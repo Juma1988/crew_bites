@@ -87,9 +87,8 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
       _session = session;
       _groups = groups;
       _foods = foods;
-      _selectedPersonId = session?.people.isNotEmpty == true
-          ? session!.people.first.id
-          : null;
+      _selectedPersonId =
+          session?.people.isNotEmpty == true ? session!.people.first.id : null;
       _ready = true;
     });
 
@@ -374,16 +373,9 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
 
   /// Tap food → +1 for selected person (shows another person icon, not ×2).
   Future<void> _onFoodTap(String foodTitle) async {
-    // Special items (Tip, Delivery) can't be assigned to people.
+    // Special items (Tip, Delivery): tap to edit the value directly.
     if (_isSpecialFood(foodTitle)) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(t.specialFoodHint),
-          behavior: SnackBarBehavior.floating,
-          duration: AppValues.snackShort,
-        ),
-      );
+      await _openEditFoodPriceDialog(foodTitle);
       return;
     }
 
@@ -454,9 +446,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
       // Auto-deselect bundle when none of its items remain in the list.
       var gid = session.groupId;
       var gName = session.groupName;
-      if (gid != null &&
-          gid.isNotEmpty &&
-          gid != RestaurantGroup.freeformId) {
+      if (gid != null && gid.isNotEmpty && gid != RestaurantGroup.freeformId) {
         final bundle = _groupById(gid);
         if (bundle != null) {
           final stillHas = bundle.items.any(
@@ -489,9 +479,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
   /// Zero duration when the user prefers reduced motion.
   Duration _motion(Duration preferred) {
     if (!mounted) return preferred;
-    return MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : preferred;
+    return MediaQuery.disableAnimationsOf(context) ? Duration.zero : preferred;
   }
 
   /// Physical swipe right (LTR start→end, RTL end→start).
@@ -608,11 +596,15 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
         context,
         initialTip: session.tipAmount,
         initialDelivery: session.deliveryFee,
+        initialPercent: session.tipPercent,
+        orderTotal: session.orderTotal,
       );
       if (result == null || !mounted) return;
       AppHaptics.selectionClick();
       await _save(session.copyWith(
         tipAmount: result.tip,
+        tipPercent: result.tipPercent,
+        clearTipPercent: result.tipPercent == null,
         deliveryFee: result.delivery,
         updatedAt: DateTime.now(),
       ));
@@ -762,7 +754,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
     // Validate extras: warn if both tip and delivery are blank.
     // Only relevant when Prices is on — services are hidden otherwise.
     if (AppSettings.instance.pricesEnabled &&
-        session.tipAmount == 0 &&
+        session.effectiveTip == 0 &&
         session.deliveryFee == 0) {
       final action = await showDialog<String>(
         context: context,
@@ -790,10 +782,14 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
           context,
           initialTip: session.tipAmount,
           initialDelivery: session.deliveryFee,
+          initialPercent: session.tipPercent,
+          orderTotal: session.orderTotal,
         );
         if (extrasResult == null || !mounted) return;
         session = session.copyWith(
           tipAmount: extrasResult.tip,
+          tipPercent: extrasResult.tipPercent,
+          clearTipPercent: extrasResult.tipPercent == null,
           deliveryFee: extrasResult.delivery,
         );
       }
@@ -837,388 +833,83 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
         return OrdersOnboarding(
           key: _ordersOnboardingKey,
           child: Scaffold(
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: AppTheme.heroGradient(scheme),
-                ),
-              ),
-            ),
-            SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 12, 8, 0),
-                    child: Row(
-                      children: [
-                        Semantics(
-                          button: true,
-                          label: MaterialLocalizations.of(context)
-                              .backButtonTooltip,
-                          child: IconButton(
-                              onPressed: () => Navigator.maybePop(context),
-                              icon: const Icon(Icons.arrow_back_rounded),
-                            ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            strings.ordersTitle,
-                            style: theme.textTheme.titleLarge,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        KeyedSubtree(
-                            key: _pricesKey,
-                            child: const PricesToggleButton(),
-                          ),
-                      ],
+            body: Stack(
+              children: [
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.heroGradient(scheme),
                     ),
                   ),
-                  const WizardStepBar(currentStep: 2),
-                  // Bundles — pill cells (tap loads placeholder menu)
-                  Padding(
-                    key: _bundlesKey,
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            strings.bundlesLabel,
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              color: scheme.primary,
-                              fontWeight: FontWeight.w800,
+                ),
+                SafeArea(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 12, 8, 0),
+                        child: Row(
+                          children: [
+                            Semantics(
+                              button: true,
+                              label: MaterialLocalizations.of(context)
+                                  .backButtonTooltip,
+                              child: IconButton(
+                                onPressed: () => Navigator.maybePop(context),
+                                icon: const Icon(Icons.arrow_back_rounded),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: [
-                                for (var i = 0; i < pills.length; i++) ...[
-                                  if (i > 0) const SizedBox(width: 8),
-                                  BundlePill(
+                            Expanded(
+                              child: Text(
+                                strings.ordersTitle,
+                                style: theme.textTheme.titleLarge,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            KeyedSubtree(
+                              key: _pricesKey,
+                              child: const PricesToggleButton(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const WizardStepBar(currentStep: 2),
+                      // Bundles — pill cells (tap loads placeholder menu)
+                      Padding(
+                        key: _bundlesKey,
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              strings.bundlesLabel,
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: scheme.primary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  for (var i = 0; i < pills.length; i++) ...[
+                                    if (i > 0) const SizedBox(width: 8),
+                                    BundlePill(
                                       group: pills[i],
                                       label: pills[i].displayName(
                                         arabic: strings.isAr,
                                       ),
-                                      selected:
-                                          session?.groupId == pills[i].id,
-                                      onTap: () =>
-                                          _onBundlePillTap(pills[i]),
+                                      selected: session?.groupId == pills[i].id,
+                                      onTap: () => _onBundlePillTap(pills[i]),
                                       onLongPress: () =>
                                           _onBundlePillLongPress(pills[i]),
                                     ),
-                                ],
-                                const SizedBox(width: 8),
-                                AddBundlePill(
+                                  ],
+                                  const SizedBox(width: 8),
+                                  AddBundlePill(
                                     onTap: _onAddBundlePill,
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                  ),
-
-                  if (people.isEmpty)
-                    Expanded(
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: scheme.primaryContainer.withValues(alpha: 0.3),
-                                  border: Border.all(
-                                    color: scheme.primary.withValues(alpha: 0.2),
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.restaurant_rounded,
-                                  size: 36,
-                                  color: scheme.primary.withValues(alpha: 0.7),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                strings.noCrewOnOrder,
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              FilledButton.icon(
-                                onPressed: () => Navigator.pushReplacementNamed(
-                                  context,
-                                  AddUserPage.route,
-                                ),
-                                icon: const Icon(Icons.group_add_rounded),
-                                label: Text(strings.goPickCrew),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // ── LEFT: characters (compact rail) ───────
-                            SizedBox(
-                              key: _crewKey,
-                              width: 72,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 2,
-                                      bottom: 6,
-                                    ),
-                                    child: Text(
-                                      strings.crewColumn,
-                                      style: theme.textTheme.labelSmall
-                                          ?.copyWith(
-                                        color: scheme.primary,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: ListView.separated(
-                                      itemCount: people.length,
-                                      separatorBuilder: (a, b) =>
-                                          const SizedBox(height: 6),
-                                      itemBuilder: (context, i) {
-                                        final p = people[i];
-                                        final selected =
-                                            p.id == _selectedPersonId;
-                                        return PersonRailTile(
-                                            person: p,
-                                            index: i,
-                                            selected: selected,
-                                            onTap: () => _selectPerson(p),
-                                          );
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            // ── RIGHT: foods ──────────────────────────
-                            Expanded(
-                              key: _foodsKey,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 4,
-                                      bottom: 8,
-                                      right: 4,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Text(
-                                          strings.foodColumn,
-                                          style: theme.textTheme.labelLarge
-                                              ?.copyWith(
-                                            color: scheme.primary,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                        const Spacer(),
-                                        if (_selectedPerson != null)
-                                          Text(
-                                            '→ ${_selectedPerson!.name}',
-                                            style: theme.textTheme.labelMedium
-                                                ?.copyWith(
-                                              color: _selectedPerson!.color,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Builder(
-                                      builder: (context) {
-                                        // Show the active bundle menu (2–3+ items),
-                                        // not only foods already assigned to people.
-                                        final menuFoods = List<String>.from(
-                                          _foods,
-                                        ).where(
-                                          // Hide the Services row when Prices is off.
-                                          (f) => pricesOn ||
-                                              !AppValues.specialFoodKeys
-                                                  .contains(
-                                                    f.toLowerCase().trim(),
-                                                  ),
-                                        ).toList();
-                                        // Always show food rows + a full-width + card.
-                                        return ListView.separated(
-                                          itemCount: menuFoods.length + 1,
-                                          separatorBuilder: (a, b) =>
-                                              const SizedBox(height: 8),
-                                          itemBuilder: (context, i) {
-                                            if (i == menuFoods.length) {
-                                              return AddFoodCard(
-                                                label: strings.addFoodMenu,
-                                                onTap: _openAddFoodDialog,
-                                              );
-                                            }
-                                            final food = menuFoods[i];
-                                            final lines =
-                                                _linesForFood(food);
-                                            final assignees = <Person>[];
-                                            for (final l in lines) {
-                                              final p =
-                                                  _personById(l.personId);
-                                              if (p != null &&
-                                                  !assignees.any(
-                                                    (x) => x.id == p.id,
-                                                  )) {
-                                                assignees.add(p);
-                                              }
-                                            }
-                                            final qtyByPerson = {
-                                              for (final l in lines)
-                                                l.personId: l.qty,
-                                            };
-                                            final undoDir = _undoSwipeDirection;
-                                            final isEmptyCard =
-                                                assignees.isEmpty;
-                                            final unitPrice = session
-                                                    ?.priceForTitle(food) ??
-                                                0;
-
-                                            return LayoutBuilder(
-                                              builder: (context, constraints) {
-                                                final w = constraints.maxWidth;
-                                                final dismissMs = _motion(
-                                                  AppValues.animListDismiss,
-                                                );
-                                                return SizedBox(
-                                                  width: w,
-                                                  child: Dismissible(
-                                                    key: ValueKey(
-                                                      'food_swipe_$food',
-                                                    ),
-                                                    direction: undoDir,
-                                                    // Slide out, then collapse list gap.
-                                                    movementDuration: dismissMs,
-                                                    resizeDuration: dismissMs,
-                                                  confirmDismiss: (_) async {
-                                                        // Special items can't be swiped away.
-                                                        if (_isSpecialFood(food)) {
-                                                          return false;
-                                                        }
-                                                        if (isEmptyCard) {
-                                                        AppHaptics
-                                                            .mediumImpact();
-                                                        // Let Dismissible animate;
-                                                        // remove data in onDismissed.
-                                                        return true;
-                                                      }
-                                                      await _undoFoodForSelected(
-                                                        food,
-                                                      );
-                                                      // Snap card back; icons animate via AnimatedSwitcher.
-                                                      return false;
-                                                    },
-                                                    onDismissed: (_) {
-                                                      _removeFoodFromMenu(
-                                                        food,
-                                                        fromDismissible: true,
-                                                      );
-                                                    },
-                                                    background: SizedBox(
-                                                      width: w,
-                                                      child: FoodSwipeBg(
-                                                        label: isEmptyCard
-                                                            ? strings
-                                                                .swipeRemoveFood
-                                                            : strings
-                                                                .swipeUndoFood,
-                                                        icon: isEmptyCard
-                                                            ? Icons
-                                                                .delete_outline_rounded
-                                                            : Icons
-                                                                .undo_rounded,
-                                                        alignStart: undoDir ==
-                                                            DismissDirection
-                                                                .startToEnd,
-                                                      ),
-                                                    ),
-                                                    child: SizedBox(
-                                                      width: w,
-                                                      child: FoodTile(
-                                                        title: strings
-                                                            .foodTitle(food),
-                                                        // F22: only show amount when set (> 0).
-                                                        // For extras card, show combined tip + delivery.
-                                                        priceText: pricesOn &&
-                                                                ((_isSpecialFood(food) &&
-                                                                        (session?.tipAmount ?? 0) +
-                                                                            (session?.deliveryFee ?? 0) >
-                                                                        0) ||
-                                                                    (!_isSpecialFood(food) &&
-                                                                        unitPrice >
-                                                                            0))
-                                                            ? strings.money(
-                                                                _isSpecialFood(food)
-                                                                    ? (session?.tipAmount ?? 0) +
-                                                                        (session?.deliveryFee ?? 0)
-                                                                    : unitPrice,
-                                                              )
-                                                            : null,
-                                                        assignees: assignees,
-                                                        qtyByPerson:
-                                                            qtyByPerson,
-                                                        selectedPersonId:
-                                                            _selectedPersonId,
-                                                        hint: strings
-                                                            .tapToAssign,
-                                                        showPriceEdit:
-                                                            pricesOn,
-                                                        onTap: () =>
-                                                            _onFoodTap(food),
-                                                        onEditPrice: pricesOn
-                                                            ? () =>
-                                                                _openEditFoodPriceDialog(
-                                                              food,
-                                                            )
-                                                            : null,
-                                                        isCompact:
-                                                            _isSpecialFood(food),
-                                                        crewIndexById:
-                                                            crewIndexById,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            );
-                                          },
-                                        );
-                                      },
-                                    ),
                                   ),
                                 ],
                               ),
@@ -1226,34 +917,357 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                           ],
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        bottomNavigationBar: people.isEmpty
-            ? null
-            : SafeArea(
-                child: Padding(
-                  key: _nextKey,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  child: FilledButton.icon(
-                    onPressed: _continue,
-                    icon: const Icon(Icons.receipt_long_rounded),
-                    label: Text(strings.continueToSummary),
+
+                      if (people.isEmpty)
+                        Expanded(
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 72,
+                                    height: 72,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: scheme.primaryContainer
+                                          .withValues(alpha: 0.3),
+                                      border: Border.all(
+                                        color: scheme.primary
+                                            .withValues(alpha: 0.2),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.restaurant_rounded,
+                                      size: 36,
+                                      color:
+                                          scheme.primary.withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    strings.noCrewOnOrder,
+                                    textAlign: TextAlign.center,
+                                    style:
+                                        theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  FilledButton.icon(
+                                    onPressed: () =>
+                                        Navigator.pushReplacementNamed(
+                                      context,
+                                      AddUserPage.route,
+                                    ),
+                                    icon: const Icon(Icons.group_add_rounded),
+                                    label: Text(strings.goPickCrew),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // ── LEFT: characters (compact rail) ───────
+                                SizedBox(
+                                  key: _crewKey,
+                                  width: 72,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 2,
+                                          bottom: 6,
+                                        ),
+                                        child: Text(
+                                          strings.crewColumn,
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(
+                                            color: scheme.primary,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: ListView.separated(
+                                          itemCount: people.length,
+                                          separatorBuilder: (a, b) =>
+                                              const SizedBox(height: 6),
+                                          itemBuilder: (context, i) {
+                                            final p = people[i];
+                                            final selected =
+                                                p.id == _selectedPersonId;
+                                            return PersonRailTile(
+                                              person: p,
+                                              index: i,
+                                              selected: selected,
+                                              onTap: () => _selectPerson(p),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // ── RIGHT: foods ──────────────────────────
+                                Expanded(
+                                  key: _foodsKey,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 4,
+                                          bottom: 8,
+                                          right: 4,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Text(
+                                              strings.foodColumn,
+                                              style: theme.textTheme.labelLarge
+                                                  ?.copyWith(
+                                                color: scheme.primary,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            if (_selectedPerson != null)
+                                              Text(
+                                                '→ ${_selectedPerson!.name}',
+                                                style: theme
+                                                    .textTheme.labelMedium
+                                                    ?.copyWith(
+                                                  color: _selectedPerson!.color,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Builder(
+                                          builder: (context) {
+                                            // Show the active bundle menu (2–3+ items),
+                                            // not only foods already assigned to people.
+                                            final menuFoods = List<String>.from(
+                                              _foods,
+                                            )
+                                                .where(
+                                                   // Hide the Tip & delivery row when Prices is off.
+                                                  (f) =>
+                                                      pricesOn ||
+                                                      !AppValues.specialFoodKeys
+                                                          .contains(
+                                                        f.toLowerCase().trim(),
+                                                      ),
+                                                )
+                                                .toList();
+                                            // Always show food rows + a full-width + card.
+                                            return ListView.separated(
+                                              itemCount: menuFoods.length + 1,
+                                              separatorBuilder: (a, b) =>
+                                                  const SizedBox(height: 8),
+                                              itemBuilder: (context, i) {
+                                                if (i == menuFoods.length) {
+                                                  return AddFoodCard(
+                                                    label: strings.addFoodMenu,
+                                                    onTap: _openAddFoodDialog,
+                                                  );
+                                                }
+                                                final food = menuFoods[i];
+                                                final lines =
+                                                    _linesForFood(food);
+                                                final assignees = <Person>[];
+                                                for (final l in lines) {
+                                                  final p =
+                                                      _personById(l.personId);
+                                                  if (p != null &&
+                                                      !assignees.any(
+                                                        (x) => x.id == p.id,
+                                                      )) {
+                                                    assignees.add(p);
+                                                  }
+                                                }
+                                                final qtyByPerson = {
+                                                  for (final l in lines)
+                                                    l.personId: l.qty,
+                                                };
+                                                final undoDir =
+                                                    _undoSwipeDirection;
+                                                final isEmptyCard =
+                                                    assignees.isEmpty;
+                                                final unitPrice = session
+                                                        ?.priceForTitle(food) ??
+                                                    0;
+
+                                                return LayoutBuilder(
+                                                  builder:
+                                                      (context, constraints) {
+                                                    final w =
+                                                        constraints.maxWidth;
+                                                    final dismissMs = _motion(
+                                                      AppValues.animListDismiss,
+                                                    );
+                                                    return SizedBox(
+                                                      width: w,
+                                                      child: Dismissible(
+                                                        key: ValueKey(
+                                                          'food_swipe_$food',
+                                                        ),
+                                                        direction: undoDir,
+                                                        // Slide out, then collapse list gap.
+                                                        movementDuration:
+                                                            dismissMs,
+                                                        resizeDuration:
+                                                            dismissMs,
+                                                        confirmDismiss:
+                                                            (_) async {
+                                                          // Special items can't be swiped away.
+                                                          if (_isSpecialFood(
+                                                              food)) {
+                                                            return false;
+                                                          }
+                                                          if (isEmptyCard) {
+                                                            AppHaptics
+                                                                .mediumImpact();
+                                                            // Let Dismissible animate;
+                                                            // remove data in onDismissed.
+                                                            return true;
+                                                          }
+                                                          await _undoFoodForSelected(
+                                                            food,
+                                                          );
+                                                          // Snap card back; icons animate via AnimatedSwitcher.
+                                                          return false;
+                                                        },
+                                                        onDismissed: (_) {
+                                                          _removeFoodFromMenu(
+                                                            food,
+                                                            fromDismissible:
+                                                                true,
+                                                          );
+                                                        },
+                                                        background: SizedBox(
+                                                          width: w,
+                                                          child: FoodSwipeBg(
+                                                            label: isEmptyCard
+                                                                ? strings
+                                                                    .swipeRemoveFood
+                                                                : strings
+                                                                    .swipeUndoFood,
+                                                            icon: isEmptyCard
+                                                                ? Icons
+                                                                    .delete_outline_rounded
+                                                                : Icons
+                                                                    .undo_rounded,
+                                                            alignStart: undoDir ==
+                                                                DismissDirection
+                                                                    .startToEnd,
+                                                          ),
+                                                        ),
+                                                        child: SizedBox(
+                                                          width: w,
+                                                          child: FoodTile(
+                                                            title: strings
+                                                                .foodTitle(
+                                                                    food),
+                                                            // F22: only show amount when set (> 0).
+                                                            // For extras card, show combined tip + delivery.
+                                                            priceText: pricesOn &&
+                                                                    ((_isSpecialFood(food) &&
+                                                                            (session?.effectiveTip ?? 0) + (session?.deliveryFee ?? 0) >
+                                                                                0) ||
+                                                                        (!_isSpecialFood(food) &&
+                                                                            unitPrice >
+                                                                                0))
+                                                                ? strings.money(
+                                                                    _isSpecialFood(
+                                                                            food)
+                                                                        ? (session?.effectiveTip ??
+                                                                                0) +
+                                                                            (session?.deliveryFee ??
+                                                                                0)
+                                                                        : unitPrice,
+                                                                  )
+                                                                : null,
+                                                            assignees:
+                                                                assignees,
+                                                            qtyByPerson:
+                                                                qtyByPerson,
+                                                            selectedPersonId:
+                                                                _selectedPersonId,
+                                                            hint: strings
+                                                                .tapToAssign,
+                                                            showPriceEdit:
+                                                                pricesOn,
+                                                            onTap: () =>
+                                                                _onFoodTap(
+                                                                    food),
+                                                            onEditPrice:
+                                                                pricesOn
+                                                                    ? () =>
+                                                                        _openEditFoodPriceDialog(
+                                                                          food,
+                                                                        )
+                                                                    : null,
+                                                            isCompact:
+                                                                _isSpecialFood(
+                                                                    food),
+                                                            crewIndexById:
+                                                                crewIndexById,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                );
+                                              },
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-              ),
-              ),
-       );
-       },
+              ],
+            ),
+            bottomNavigationBar: people.isEmpty
+                ? null
+                : SafeArea(
+                    child: Padding(
+                      key: _nextKey,
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: FilledButton.icon(
+                        onPressed: _continue,
+                        icon: const Icon(Icons.receipt_long_rounded),
+                        label: Text(strings.continueToSummary),
+                      ),
+                    ),
+                  ),
+          ),
+        );
+      },
     );
   }
 }
-
-
-
-
-
-

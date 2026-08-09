@@ -82,6 +82,7 @@ abstract final class OrderStore {
       groupName: session.groupName,
       foodPrices: Map<String, double>.from(session.foodPrices),
       tipAmount: session.tipAmount,
+      tipPercent: session.tipPercent,
       deliveryFee: session.deliveryFee,
     );
     await saveCurrent(restored, p);
@@ -225,9 +226,7 @@ abstract final class OrderStore {
     final lines = <OrderLine>[];
     var changed = false;
     for (final l in session.lines) {
-      if (!changed &&
-          l.personId == personId &&
-          l.title.toLowerCase() == key) {
+      if (!changed && l.personId == personId && l.title.toLowerCase() == key) {
         changed = true;
         if (l.qty > 1) lines.add(l.copyWith(qty: l.qty - 1));
       } else {

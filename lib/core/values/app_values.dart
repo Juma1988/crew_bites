@@ -5,14 +5,19 @@ import 'package:flutter/material.dart';
 enum ColorPalette {
   /// Brand coral — matches launcher accent.
   coral('coral', Color(0xFFFF6B4A), Color(0xFFFFB347)),
+
   /// Blumine / tropical ocean.
   ocean('ocean', Color(0xFF1A6B8A), Color(0xFF5BC0BE)),
+
   /// Eggplant / berry.
   grape('grape', Color(0xFF7B2CBF), Color(0xFFC77DFF)),
+
   /// Wasabi / fresh greens.
   mint('mint', Color(0xFF2D6A4F), Color(0xFF95D5B2)),
+
   /// Mango mojito — warm orange + gold (id kept for prefs).
   sunset('sunset', Color(0xFFF4A261), Color(0xFFE9C46A)),
+
   /// Neon — unlocked via easter egg (swipe down 5× on summary).
   neon('neon', Color(0xFF39FF14), Color(0xFFFF1493));
 
@@ -38,7 +43,7 @@ abstract final class AppValues {
   // ── Brand ───────────────────────────────────────────────────────────
 
   static const String brandName = 'Crew Bites';
-  static const String appVersion = '1.0.0';
+  static const String appVersion = '1.0.5';
 
   // ── Layout / shape ──────────────────────────────────────────────────
 
@@ -59,8 +64,10 @@ abstract final class AppValues {
 
   static const Duration animFast = Duration(milliseconds: 160);
   static const Duration animNormal = Duration(milliseconds: 200);
+
   /// Food row swipe dismiss + list collapse.
   static const Duration animListDismiss = Duration(milliseconds: 280);
+
   /// Assignee chip enter/leave on undo / assign.
   static const Duration animIconPop = Duration(milliseconds: 220);
   static const Duration snackShort = Duration(seconds: 2);
@@ -109,6 +116,9 @@ abstract final class AppValues {
   static const String prefsHistory = 'history';
   static const String prefsCurrency = 'currency_code';
   static const String prefsFriendIconStyle = 'friend_icon_style';
+  static const String prefsExtrasSplit = 'extras_split_mode';
+  static const String prefsRoundTotals = 'round_totals';
+  static const String prefsLastSeenChangelog = 'last_seen_changelog';
 
   // ── Easter eggs ─────────────────────────────────────────────────────
   static const String prefsNeonUnlocked = 'easter_egg_neon_unlocked';
@@ -121,7 +131,7 @@ abstract final class AppValues {
   // ── Currency ────────────────────────────────────────────────────────
 
   /// Supported currency codes (display suffixes live in Translate).
-  static const List<String> currencyCodes = ['EGP', 'USD', 'SAR', 'EUR'];
+  static const List<String> currencyCodes = ['EGP', 'USD', 'SAR', 'EUR', 'QAR'];
   static const String defaultCurrency = 'EGP';
 
   // ── Routes ──────────────────────────────────────────────────────────
@@ -133,6 +143,7 @@ abstract final class AppValues {
   static const String routeHistory = '/history';
   static const String routeSettings = '/settings';
   static const String routePrivacy = '/privacy';
+  static const String routeChangelog = '/changelog';
 
   // ── Bundle ids ──────────────────────────────────────────────────────
 

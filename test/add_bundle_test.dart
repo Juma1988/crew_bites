@@ -3,8 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:app_101/core/states/app_settings.dart';
+import 'package:app_101/core/app_navigator.dart';
 import 'package:app_101/core/states/order_store.dart';
-import 'package:app_101/main.dart';
+import 'package:app_101/app.dart';
 import 'package:app_101/models/order_models.dart';
 import 'package:app_101/models/output_args.dart';
 import 'package:app_101/screens/output_history_page.dart';
@@ -69,7 +70,8 @@ void main() {
         Person(id: 'p1', name: 'Ali', emoji: '😎', colorValue: 0xFF4D96FF),
       ],
       lines: [
-        OrderLine(id: 'l1', personId: 'p1', title: 'Koshary', qty: 1, price: 40),
+        OrderLine(
+            id: 'l1', personId: 'p1', title: 'Koshary', qty: 1, price: 40),
       ],
     );
     await OrderStore.saveCurrent(session, prefs);

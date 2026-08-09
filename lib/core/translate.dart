@@ -82,7 +82,8 @@ class Translate {
 
   String get nameRequired => _tr('Type a name', 'اكتب اسم');
 
-  String get nameAlreadyExists => _tr('Name already exists', 'الاسم موجود قبل كده');
+  String get nameAlreadyExists =>
+      _tr('Name already exists', 'الاسم موجود قبل كده');
 
   String get pickCrewTitle => _tr('Who’s with you?', 'مين معاك؟');
 
@@ -94,6 +95,17 @@ class Translate {
   String get selectedCount => _tr('Selected', 'المختارين');
 
   String get continueToOrders => _tr('Next… food', 'يلا… الأكل');
+
+  String get unfavFriendsTitle => _tr('Keep your friends?', 'تحتفظ بأصحابك؟');
+
+  String unfavFriendsBody(int count) => _tr(
+        'Friends who aren\'t favorited are removed when this order finishes. '
+            'Favorite $count of them now so they stay for every order?',
+        '$count من أصحابك مش في المفضلة وهيتشالوا بعد ما الطلب يخلص. '
+            'تحطهم في المفضلة عشان يفضلوا؟',
+      );
+
+  String get unfavFriendsFavorite => _tr('Favorite & continue', 'للمفضلة ويلا');
 
   String get selectAtLeastOne =>
       _tr('Pick at least one', 'اختار واحد على الأقل');
@@ -113,13 +125,11 @@ class Translate {
   String get shuffleAvatarHint =>
       _tr('Tap face to shuffle 🎲', 'دوس على الوش عشان تغيّره 🎲');
 
-  String get tapToChangeAvatar =>
-      _tr('Tap to change avatar', 'اختر إيموجي');
+  String get tapToChangeAvatar => _tr('Tap to change avatar', 'اختر إيموجي');
 
   String get renamePerson => _tr('Rename', 'غيّر الاسم');
 
-  String get deletePersonConfirm =>
-      _tr('Remove this name?', 'نشيل الاسم ده؟');
+  String get deletePersonConfirm => _tr('Remove this name?', 'نشيل الاسم ده؟');
 
   String get delete => _tr('Delete', 'امسح');
 
@@ -137,8 +147,7 @@ class Translate {
 
   String get undo => _tr('Undo', 'رجّع');
 
-  String personRemovedToast(String name) =>
-      _tr('$name removed', 'اتشال $name');
+  String personRemovedToast(String name) => _tr('$name removed', 'اتشال $name');
 
   String get peopleSwipeHint => _tr(
         'Swipe a name: ⭐ favorite · 🗑️ delete (you can undo)',
@@ -202,8 +211,8 @@ class Translate {
         'ضفنا $count من $bundleName',
       );
 
-  String get bundleItemsAlreadyAdded =>
-      _tr('Those items are already on the list', 'الأكل ده موجود أصلاً في الليستة');
+  String get bundleItemsAlreadyAdded => _tr(
+      'Those items are already on the list', 'الأكل ده موجود أصلاً في الليستة');
 
   String get addBundle => _tr('New bundle', 'باقة جديدة');
 
@@ -211,11 +220,10 @@ class Translate {
 
   String get addBundleNameHint => _tr('e.g. My place', 'مثال: مكاني');
 
-  String editBundleTitle(String name) =>
-      _tr('Edit $name', 'عدّل $name');
+  String editBundleTitle(String name) => _tr('Edit $name', 'عدّل $name');
 
-  String get editBundleHint =>
-      _tr('Items this pill adds to the food list', 'الأكل اللي الباقة بتنزّله في الليستة');
+  String get editBundleHint => _tr('Items this pill adds to the food list',
+      'الأكل اللي الباقة بتنزّله في الليستة');
 
   String get bundleItemEmpty =>
       _tr('No items yet — add some below', 'لسه مفيش أكل — ضيف من تحت');
@@ -229,8 +237,7 @@ class Translate {
 
   String get done => _tr('Done', 'خلاص');
 
-  String get removeFoodFromMenu =>
-      _tr('Remove from menu?', 'نشيله من المنيو؟');
+  String get removeFoodFromMenu => _tr('Remove from menu?', 'نشيله من المنيو؟');
 
   String get removeFoodFromMenuBody => _tr(
         'This food leaves the place list. You can add it again later.',
@@ -255,8 +262,7 @@ class Translate {
   String get pickFoodsFirst =>
       _tr('Mark at least one food', 'علّم أكل واحد على الأقل');
 
-  String get selectPersonFirst =>
-      _tr('Pick a person first', 'اختار حد الأول');
+  String get selectPersonFirst => _tr('Pick a person first', 'اختار حد الأول');
 
   String get crewColumn => _tr('Friends', 'الأصحاب');
 
@@ -280,8 +286,7 @@ class Translate {
   String get addAtLeastOneItem =>
       _tr('Add at least one food', 'ضيف أكلة واحدة على الأقل');
 
-  String get missingPricesTitle =>
-      _tr('Missing prices', 'في أسعار ناقصة');
+  String get missingPricesTitle => _tr('Missing prices', 'في أسعار ناقصة');
 
   String get missingPricesBody => _tr(
         'Some foods still need a price. Fill them in, or mark “I don’t know”.',
@@ -294,8 +299,8 @@ class Translate {
   String get missingPricesContinue =>
       _tr('Save prices & continue', 'احفظ الأسعار وكمّل');
 
-  String get missingPricesInvalid =>
-      _tr('Enter a price, or check “I don’t know”', 'اكتب سعر، أو علّم «مش عارف»');
+  String get missingPricesInvalid => _tr(
+      'Enter a price, or check “I don’t know”', 'اكتب سعر، أو علّم «مش عارف»');
 
   String get emptyOrder => _tr('No food yet.', 'لسه مفيش أكل.');
 
@@ -370,8 +375,7 @@ class Translate {
   String get buildBundleEmptyFoods =>
       _tr('Add some food first', 'ضيف أكل الأول');
 
-  String get buildBundleCreated =>
-      _tr('Bundle saved ✓', 'الباقة اتخزنت ✓');
+  String get buildBundleCreated => _tr('Bundle saved ✓', 'الباقة اتخزنت ✓');
 
   String updateBundleTitle(String name) =>
       _tr('Update “$name”?', 'نعدّل «$name»؟');
@@ -386,8 +390,7 @@ class Translate {
   String get updateBundleNothingNew =>
       _tr('That bundle already has all these foods', 'الباقة فيها كل الأكل ده');
 
-  String get buildBundleUpdated =>
-      _tr('Bundle updated ✓', 'الباقة اتعدّلت ✓');
+  String get buildBundleUpdated => _tr('Bundle updated ✓', 'الباقة اتعدّلت ✓');
 
   String get shareSummary => _tr('Share', 'شارك');
 
@@ -399,8 +402,19 @@ class Translate {
 
   String get deliveryHint => _tr('0 if none', '٠ لو مفيش');
 
-  String get extrasSectionTitle =>
-      _tr('Services', 'الخدمات');
+  String get tipPercentLabel => _tr('Tip %', 'بقشيش %');
+
+  String get tipPercentHint => _tr('Optional', 'اختياري');
+
+  String get tipPercentOrBody =>
+      _tr('Or a percent of the food subtotal', 'أو نسبة من قيمة الأكل');
+
+  String tipApprox(double amount) => _tr(
+        'Tip ≈ ${money(amount)}',
+        'البقشيش ≈ ${money(amount)}',
+      );
+
+  String get extrasSectionTitle => _tr('Tip & delivery', 'بقشيش وتوصيل');
 
   String get extrasSectionSubtitle => _tr(
         'Optional. Split across people who ordered (by food total).',
@@ -413,8 +427,8 @@ class Translate {
       );
 
   String get extrasEmptyDialogTitle => _tr(
-        'No services yet',
-        'مفيش خدمات',
+        'No tip or delivery yet',
+        'مفيش بقشيش ولا توصيل',
       );
 
   String get extrasEmptyDialogMessage => _tr(
@@ -424,8 +438,7 @@ class Translate {
 
   String get addNow => _tr('Add now', 'ضيف دلوقتي');
 
-  String get tipDeliveryDialogTitle =>
-      _tr('Tip & delivery?', 'بقشيش وتوصيل؟');
+  String get tipDeliveryDialogTitle => _tr('Tip & delivery?', 'بقشيش وتوصيل؟');
 
   String get tipDeliveryDialogBody => _tr(
         'Optional before the summary. Leave empty or skip if none.',
@@ -436,11 +449,9 @@ class Translate {
 
   String get tipDeliveryContinue => _tr('To summary', 'للملخص');
 
-  String get extrasTapToEdit =>
-      _tr('Tap to change', 'دوس عشان تعدّل');
+  String get extrasTapToEdit => _tr('Tap to change', 'دوس عشان تعدّل');
 
-  String get foodSubtotalLabel =>
-      _tr('Food', 'الأكل');
+  String get foodSubtotalLabel => _tr('Food', 'الأكل');
 
   String grandTotalLabel(double amount) =>
       _tr('Grand total ${money(amount)}', 'الإجمالي ${money(amount)}');
@@ -483,7 +494,8 @@ class Translate {
     final code = AppSettings.instance.currencyCode;
     return switch (code) {
       'USD' => _tr('\$', '\$'),
-      'SAR' => _tr('SAR', 'ر.س'),
+      'SAR' => _tr('﷼', '﷼'),
+      'QAR' => _tr('ر.ق', 'ر.ق'),
       'EUR' => _tr('€', '€'),
       _ => _tr('le', 'ج.م'),
     };
@@ -491,15 +503,15 @@ class Translate {
 
   String currencyLabel(String code) => switch (code) {
         'USD' => _tr('US Dollar (\$)', 'دولار (\$)'),
-        'SAR' => _tr('Saudi Riyal', 'ريال سعودي'),
+        'SAR' => _tr('Saudi Riyal ﷼', 'ريال سعودي ﷼'),
+        'QAR' => _tr('Qatari Riyal', 'ريال قطري'),
         'EUR' => _tr('Euro (€)', 'يورو (€)'),
         _ => _tr('Egyptian Pound (le)', 'جنيه مصري (ج.م)'),
       };
 
   String get settingsCurrency => _tr('Currency', 'العملة');
 
-  String get settingsFriendIcons =>
-      _tr('Friend icons', 'أيقونات الأصدقاء');
+  String get settingsFriendIcons => _tr('Friend icons', 'أيقونات الأصدقاء');
 
   String get friendIconStyleBody => _tr(
         'Choose how friends appear on food rows, Home, history and share.',
@@ -512,6 +524,26 @@ class Translate {
         FriendIconStyle.firstLetter => _tr('First letter', 'أول حرف'),
         FriendIconStyle.firstTwo => _tr('First two letters', 'أول حرفين'),
       };
+
+  String get settingsExtrasSplit =>
+      _tr('Split tip & delivery', 'تقسيم البقشيش والتوصيل');
+
+  String get extrasSplitBody => _tr(
+        'Split even gives everyone an equal share. By order value splits proportionally to each person\'s food total.',
+        'تساوي: نصيب متساوي للكل. حسب قيمة الطلب: كل واحد يدفع قد قيمة أكله.',
+      );
+
+  String get splitModeEven => _tr('Split even', 'تساوي');
+
+  String get splitModeByValue => _tr('By order value', 'حسب قيمة الطلب');
+
+  String get roundTotalsLabel =>
+      _tr('Round to whole numbers', 'قرّب للأرقام الصحيحة');
+
+  String get roundTotalsBody => _tr(
+        'Each person\'s share rounds to a whole unit so the totals sum exactly.',
+        'نصيب كل واحد يتقرب لرقم صحيح عشان المجاميع تطلع مضبوطة.',
+      );
 
   String formatAmount(double price) {
     if (price == price.roundToDouble()) return price.round().toString();
@@ -608,7 +640,8 @@ class Translate {
         'مفيش حساب ولا تسجيل. كل حاجة بتتحفظ على موبايلك بس.',
       );
 
-  String get faqSplit => _tr('How does the bill split work?', 'تقسيم الحساب إزاي؟');
+  String get faqSplit =>
+      _tr('How does the bill split work?', 'تقسيم الحساب إزاي؟');
 
   String get faqSplitBody => _tr(
         'Each person pays their own food total, plus an equal share of tip and delivery.',
@@ -641,20 +674,11 @@ class Translate {
 
   String get whatsNewTitle => _tr("What's new", 'إيه الجديد');
 
-  // ── Future features (roadmap card in Settings) ──────────────────────
+  String get gotIt => _tr('Got it', 'تمام');
 
-  String get releaseNotesBody => _tr(
-        '1.0.0 — First public release.\n'
-        '• Group orders: friends → food → summary\n'
-        '• Prices on/off, bundles, history (last 3)\n'
-        '• Arabic + English, tips on first visit\n'
-        '• Data stays on your phone',
-        '1.0.0 — أول إصدار عام.\n'
-        '• طلب جماعي: أصحاب → أكل → ملخص\n'
-        '• أسعار، باقات، سجل (آخر ٣)\n'
-        '• عربي + إنجليزي، تلميحات أول مرة\n'
-        '• البيانات على الموبايل بس',
-      );
+  String get latestVersion => _tr('Latest', 'الأحدث');
+
+  String get currentVersionBadge => _tr('This version', 'الإصدار ده');
 
   String get stepPeople => _tr('Friends', 'الأصحاب');
   String get stepFood => _tr('Food', 'الأكل');
@@ -723,8 +747,7 @@ class Translate {
 
   String get settingsAbout => _tr('About', 'عن التطبيق');
 
-  String get clearCustomRoster =>
-      _tr('Reset roster', 'إعادة تعيين القائمة');
+  String get clearCustomRoster => _tr('Reset roster', 'إعادة تعيين القائمة');
 
   String get clearCustomRosterBody => _tr(
         'Resets to starter names (Alex/Sam/Jordan). Favorites are also cleared.',
@@ -755,11 +778,6 @@ class Translate {
       _ => raw,
     };
   }
-
-  String get specialFoodHint => _tr(
-        'Long-press to set amount',
-        'اضغط مطول عشان تحط المبلغ',
-      );
 
   // ── Onboarding ─────────────────────────────────────────────────────
 
@@ -819,11 +837,12 @@ class Translate {
   String get obServicesTitle => _tr('Tip & delivery 🛵', 'بقشيش وتوصيل 🛵');
 
   String get obServicesBody => _tr(
-        'Long-press the Services card to add tip or delivery fees. They split automatically between everyone.',
-        'اضغط مطول على بطاقة الخدمات عشان تضيف بقشيش أو توصيل. بتتقسم تلقائي بين الكل.',
+        'Tap the Tip & delivery card to add tip or delivery fees. They split automatically between everyone.',
+        'دوس على بطاقة البقشيش والتوصيل عشان تضيف بقشيش أو توصيل. بتتقسم تلقائي بين الكل.',
       );
 
-  String get obBundlesTitle => _tr('Save time with bundles ⏱️', 'وفّر الوقت بالباقات ⏱️');
+  String get obBundlesTitle =>
+      _tr('Save time with bundles ⏱️', 'وفّر الوقت بالباقات ⏱️');
 
   String get obBundlesBody => _tr(
         'Tap a bundle to load a restaurant\'s menu instantly. You can create your own from any order!',
@@ -853,7 +872,8 @@ class Translate {
         'دوس شارك عشان تبعت الطلب كنص في شات الجروب أو تنسخه.',
       );
 
-  String get obBundleSaveTitle => _tr('Save for next time 💾', 'احفظ للمرة الجاية 💾');
+  String get obBundleSaveTitle =>
+      _tr('Save for next time 💾', 'احفظ للمرة الجاية 💾');
 
   String get obBundleSaveBody => _tr(
         'Like this order? Save it as a bundle to load it instantly next time!',

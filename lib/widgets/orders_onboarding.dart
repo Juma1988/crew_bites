@@ -7,7 +7,7 @@ import '../../core/translate.dart';
 import '../../core/values/app_values.dart';
 
 /// In-page onboarding overlay for the "Who eats what" page.
-/// Teaches Prices, Services, Bundles, and Undo — only once.
+/// Teaches Prices, Tip & delivery, Bundles, and Undo — only once.
 class OrdersOnboarding extends StatefulWidget {
   const OrdersOnboarding({super.key, required this.child});
 

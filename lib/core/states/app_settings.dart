@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
+import '../extras_split_mode.dart';
 import '../friend_icon_style.dart';
 import '../values/app_values.dart';
 import 'crew_store.dart';
@@ -17,16 +17,27 @@ class AppSettings extends ChangeNotifier {
   static const _keyPrices = AppValues.prefsPrices;
   static const _keyCurrency = AppValues.prefsCurrency;
   static const _keyFriendIcons = AppValues.prefsFriendIconStyle;
+  static const _keyExtrasSplit = AppValues.prefsExtrasSplit;
+  static const _keyRoundTotals = AppValues.prefsRoundTotals;
 
   ThemeMode themeMode = ThemeMode.system;
+
   /// Active color seed (icons/assets unchanged).
   ColorPalette colorPalette = ColorPalette.coral;
+
   /// Default language: English.
   String _localeCode = 'en';
   bool _pricesEnabled = true;
   String currencyCode = AppValues.defaultCurrency;
+
   /// How friends are marked on food rows, Home, history and share.
   FriendIconStyle friendIconStyle = FriendIconStyle.firstTwo;
+
+  /// How tip + delivery are shared among people.
+  ExtrasSplitMode extrasSplitMode = ExtrasSplitMode.even;
+
+  /// Round each person's share to whole units so the split sums exactly.
+  bool roundTotals = false;
 
   /// Set when a prefs decode failed (UI can toast once).
   bool prefsLoadWarning = false;
@@ -64,6 +75,9 @@ class AppSettings extends ChangeNotifier {
           : AppValues.defaultCurrency;
       friendIconStyle =
           FriendIconStyle.fromKey(prefs.getString(_keyFriendIcons));
+      extrasSplitMode =
+          ExtrasSplitMode.fromKey(prefs.getString(_keyExtrasSplit));
+      roundTotals = prefs.getBool(_keyRoundTotals) ?? false;
     } catch (_) {
       prefsLoadWarning = true;
     }
@@ -153,6 +167,20 @@ class AppSettings extends ChangeNotifier {
     friendIconStyle = style;
     notifyListeners();
     await _save(_keyFriendIcons, style.key);
+  }
+
+  Future<void> setExtrasSplitMode(ExtrasSplitMode mode) async {
+    if (mode == extrasSplitMode) return;
+    extrasSplitMode = mode;
+    notifyListeners();
+    await _save(_keyExtrasSplit, mode.key);
+  }
+
+  Future<void> setRoundTotals(bool value) async {
+    if (value == roundTotals) return;
+    roundTotals = value;
+    notifyListeners();
+    await _saveBool(_keyRoundTotals, value);
   }
 
   /// Clears user-added names (prefs + [CrewStore] memory/UI).

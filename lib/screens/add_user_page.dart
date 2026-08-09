@@ -79,6 +79,19 @@ class _AddUserPageState extends State<AddUserPage> {
     }
   }
 
+  /// "Add friend" entry point shared by the FAB and the empty state.
+  void _handleAddPressed() {
+    if (_crew.canAddToRoster) {
+      _openAddDialog();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(t.maxCrewRosterReached(AppValues.maxCrewRoster)),
+        ),
+      );
+    }
+  }
+
   Future<void> _onLongPress(String name, int index) async {
     AppHaptics.mediumImpact();
     final strings = t;
@@ -278,6 +291,39 @@ class _AddUserPageState extends State<AddUserPage> {
       return;
     }
 
+    // Selected friends who aren't favorites get pruned when the order
+    // finishes — warn now and offer to favorite them in one tap.
+    final unfavSelected =
+        _crew.selected.where((n) => !_crew.isFavorite(n)).toList();
+    if (unfavSelected.isNotEmpty) {
+      final favoriteAll = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+          ),
+          title: Text(strings.unfavFriendsTitle),
+          content: Text(strings.unfavFriendsBody(unfavSelected.length)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(strings.continueLabel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(strings.unfavFriendsFavorite),
+            ),
+          ],
+        ),
+      );
+      if (favoriteAll == null || !mounted) return;
+      if (favoriteAll == true) {
+        for (final n in unfavSelected) {
+          if (!_crew.isFavorite(n)) await _crew.toggleFavorite(n);
+        }
+      }
+    }
+
     AppHaptics.mediumImpact();
     final existing = await OrderStore.loadCurrent();
     final people = _crew.buildSelectedPeople(existing);
@@ -338,309 +384,334 @@ class _AddUserPageState extends State<AddUserPage> {
         return OnboardingOverlay(
           key: _onboardingKey,
           child: Scaffold(
-          body: Stack(
-            children: [
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.heroGradient(scheme),
+            body: Stack(
+              children: [
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.heroGradient(scheme),
+                    ),
                   ),
                 ),
-              ),
-              SafeArea(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 12, 12, 0),
-                      child: Row(
-                        children: [
-                          Semantics(
-                            button: true,
-                            label: MaterialLocalizations.of(context)
-                                .backButtonTooltip,
-                            child: IconButton(
-                              onPressed: () => Navigator.maybePop(context),
-                              icon: const Icon(Icons.arrow_back_rounded),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              strings.pickCrewTitle,
-                              style: theme.textTheme.titleLarge,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: scheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(
-                                AppValues.radiusPill,
+                SafeArea(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 12, 12, 0),
+                        child: Row(
+                          children: [
+                            Semantics(
+                              button: true,
+                              label: MaterialLocalizations.of(context)
+                                  .backButtonTooltip,
+                              child: IconButton(
+                                onPressed: () => Navigator.maybePop(context),
+                                icon: const Icon(Icons.arrow_back_rounded),
                               ),
                             ),
-                            child: Text(
-                              '${strings.selectedCount} ${_crew.selected.length}',
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: scheme.onPrimaryContainer,
+                            Expanded(
+                              child: Text(
+                                strings.pickCrewTitle,
+                                style: theme.textTheme.titleLarge,
                               ),
                             ),
-                          ),
-                        ],
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: scheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(
+                                  AppValues.radiusPill,
+                                ),
+                              ),
+                              child: Text(
+                                '${strings.selectedCount} ${_crew.selected.length}',
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: scheme.onPrimaryContainer,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: WizardStepBar(currentStep: 1),
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: KeyedSubtree(
-                        key: _listKey,
-                        child: names.isEmpty
-                            ? Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(32),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 80,
-                                        height: 80,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: scheme.primaryContainer.withValues(alpha: 0.3),
-                                          border: Border.all(
-                                            color: scheme.primary.withValues(alpha: 0.2),
-                                            width: 2,
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: WizardStepBar(currentStep: 1),
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: KeyedSubtree(
+                          key: _listKey,
+                          child: names.isEmpty
+                              ? Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(32),
+                                    child: Semantics(
+                                      button: true,
+                                      label: strings.addPerson,
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          borderRadius:
+                                              BorderRadius.circular(24),
+                                          onTap: _handleAddPressed,
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(16),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Container(
+                                                  width: 80,
+                                                  height: 80,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: scheme
+                                                        .primaryContainer
+                                                        .withValues(alpha: 0.3),
+                                                    border: Border.all(
+                                                      color: scheme.primary
+                                                          .withValues(
+                                                              alpha: 0.2),
+                                                      width: 2,
+                                                    ),
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.group_add_rounded,
+                                                    size: 40,
+                                                    color: scheme.primary
+                                                        .withValues(alpha: 0.7),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 20),
+                                                Text(
+                                                  strings.noPeopleYet,
+                                                  textAlign: TextAlign.center,
+                                                  style: theme
+                                                      .textTheme.titleMedium
+                                                      ?.copyWith(
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  strings.noPeopleHint,
+                                                  textAlign: TextAlign.center,
+                                                  style: theme
+                                                      .textTheme.bodyMedium
+                                                      ?.copyWith(
+                                                    color:
+                                                        scheme.onSurfaceVariant,
+                                                    height: 1.4,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                        child: Icon(
-                                          Icons.group_add_rounded,
-                                          size: 40,
-                                          color: scheme.primary.withValues(alpha: 0.7),
-                                        ),
                                       ),
-                                      const SizedBox(height: 20),
-                                      Text(
-                                        strings.noPeopleYet,
-                                        textAlign: TextAlign.center,
-                                        style: theme.textTheme.titleMedium
-                                            ?.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        strings.noPeopleHint,
-                                        textAlign: TextAlign.center,
-                                        style:
-                                            theme.textTheme.bodyMedium?.copyWith(
-                                          color: scheme.onSurfaceVariant,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
-                        itemCount: names.length,
-                        separatorBuilder: (a, b) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final name = names[index];
-                          final selected = _crew.selected.contains(name);
-                          final color = Color(_crew.colorFor(name, index));
-                          final emoji = _crew.emojiFor(name);
-                          final isFav = _crew.isFavorite(name);
-                          final radius =
-                              BorderRadius.circular(AppTheme.radiusCard);
-                          final iconStyle =
-                              AppSettings.instance.friendIconStyle;
-                          final markPerson = Person(
-                            id: name,
-                            name: name,
-                            emoji: emoji,
-                            colorValue: color.toARGB32(),
-                          );
-                          final mark = friendIconMark(
-                            markPerson,
-                            iconStyle,
-                            index,
-                          );
-                          final markIsEmoji =
-                              friendUsesEmoji(markPerson, iconStyle);
-
-                          return _ShortSwipeTile(
-                            key: ValueKey('name_$name'),
-                            borderRadius: radius,
-                            favColor: scheme.tertiaryContainer,
-                            favIconColor: scheme.onTertiaryContainer,
-                            favIcon: isFav
-                                ? Icons.star_rounded
-                                : Icons.star_border_rounded,
-                            // Clear red delete affordance (not soft errorContainer).
-                            deleteColor: const Color(0xFFE53935),
-                            deleteIconColor: Colors.white,
-                            onFavorite: () => _toggleFavorite(name),
-                            onDelete: () => _confirmSwipeDelete(name),
-                            child: Material(
-                              color: selected
-                                  ? scheme.primaryContainer
-                                      .withValues(alpha: 0.55)
-                                  : scheme.surface.withValues(alpha: 0.92),
-                              borderRadius: radius,
-                              child: InkWell(
-                                borderRadius: radius,
-                                onTap: () => _toggle(name),
-                                onLongPress: () => _onLongPress(name, index),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 14,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    borderRadius: radius,
-                                    border: Border.all(
-                                      color: selected
-                                          ? scheme.primary
-                                          : scheme.outlineVariant
-                                              .withValues(alpha: 0.5),
-                                      width: selected ? 2 : 1,
                                     ),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: AppValues.personAvatarRadius,
-                                        backgroundColor:
-                                            color.withValues(alpha: 0.28),
-                                        child: Text(
-                                          mark,
-                                          style: TextStyle(
-                                            fontSize: markIsEmoji ? 26 : 15,
-                                            fontWeight: FontWeight.w800,
-                                            color: markIsEmoji
-                                                ? null
-                                                : color,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Row(
-                                          children: [
-                                            Flexible(
-                                              child: Text(
-                                                name,
-                                                style: theme
-                                                    .textTheme.titleMedium
-                                                    ?.copyWith(
-                                                  fontWeight: FontWeight.w700,
-                                                ),
+                                )
+                              : ListView.separated(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(22, 0, 22, 24),
+                                  itemCount: names.length,
+                                  separatorBuilder: (a, b) =>
+                                      const SizedBox(height: 10),
+                                  itemBuilder: (context, index) {
+                                    final name = names[index];
+                                    final selected =
+                                        _crew.selected.contains(name);
+                                    final color =
+                                        Color(_crew.colorFor(name, index));
+                                    final emoji = _crew.emojiFor(name);
+                                    final isFav = _crew.isFavorite(name);
+                                    final radius = BorderRadius.circular(
+                                        AppTheme.radiusCard);
+                                    final iconStyle =
+                                        AppSettings.instance.friendIconStyle;
+                                    final markPerson = Person(
+                                      id: name,
+                                      name: name,
+                                      emoji: emoji,
+                                      colorValue: color.toARGB32(),
+                                    );
+                                    final mark = friendIconMark(
+                                      markPerson,
+                                      iconStyle,
+                                      index,
+                                    );
+                                    final markIsEmoji =
+                                        friendUsesEmoji(markPerson, iconStyle);
+
+                                    return _ShortSwipeTile(
+                                      key: ValueKey('name_$name'),
+                                      borderRadius: radius,
+                                      favColor: scheme.tertiaryContainer,
+                                      favIconColor: scheme.onTertiaryContainer,
+                                      favIcon: isFav
+                                          ? Icons.star_rounded
+                                          : Icons.star_border_rounded,
+                                      // Clear red delete affordance (not soft errorContainer).
+                                      deleteColor: const Color(0xFFE53935),
+                                      deleteIconColor: Colors.white,
+                                      onFavorite: () => _toggleFavorite(name),
+                                      onDelete: () => _confirmSwipeDelete(name),
+                                      child: Material(
+                                        color: selected
+                                            ? scheme.primaryContainer
+                                                .withValues(alpha: 0.55)
+                                            : scheme.surface
+                                                .withValues(alpha: 0.92),
+                                        borderRadius: radius,
+                                        child: InkWell(
+                                          borderRadius: radius,
+                                          onTap: () => _toggle(name),
+                                          onLongPress: () =>
+                                              _onLongPress(name, index),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 14,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              borderRadius: radius,
+                                              border: Border.all(
+                                                color: selected
+                                                    ? scheme.primary
+                                                    : scheme.outlineVariant
+                                                        .withValues(alpha: 0.5),
+                                                width: selected ? 2 : 1,
                                               ),
                                             ),
-                                            if (isFav) ...[
-                                              const SizedBox(width: 8),
-                                              Icon(
-                                                Icons.star_rounded,
-                                                size: 20,
-                                                color: scheme.tertiary,
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                      AnimatedContainer(
-                                        duration: AppValues.animNormal,
-                                        width: 28,
-                                        height: 28,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: selected
-                                              ? scheme.primary
-                                              : Colors.transparent,
-                                          border: Border.all(
-                                            color: selected
-                                                ? scheme.primary
-                                                : scheme.outline,
-                                            width: 2,
+                                            child: Row(
+                                              children: [
+                                                CircleAvatar(
+                                                  radius: AppValues
+                                                      .personAvatarRadius,
+                                                  backgroundColor: color
+                                                      .withValues(alpha: 0.28),
+                                                  child: Text(
+                                                    mark,
+                                                    style: TextStyle(
+                                                      fontSize:
+                                                          markIsEmoji ? 26 : 15,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color: markIsEmoji
+                                                          ? null
+                                                          : color,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 14),
+                                                Expanded(
+                                                  child: Row(
+                                                    children: [
+                                                      Flexible(
+                                                        child: Text(
+                                                          name,
+                                                          style: theme.textTheme
+                                                              .titleMedium
+                                                              ?.copyWith(
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      if (isFav) ...[
+                                                        const SizedBox(
+                                                            width: 8),
+                                                        Icon(
+                                                          Icons.star_rounded,
+                                                          size: 20,
+                                                          color:
+                                                              scheme.tertiary,
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                ),
+                                                AnimatedContainer(
+                                                  duration:
+                                                      AppValues.animNormal,
+                                                  width: 28,
+                                                  height: 28,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: selected
+                                                        ? scheme.primary
+                                                        : Colors.transparent,
+                                                    border: Border.all(
+                                                      color: selected
+                                                          ? scheme.primary
+                                                          : scheme.outline,
+                                                      width: 2,
+                                                    ),
+                                                  ),
+                                                  child: selected
+                                                      ? Icon(
+                                                          Icons.check_rounded,
+                                                          size: 18,
+                                                          color:
+                                                              scheme.onPrimary,
+                                                        )
+                                                      : null,
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                        child: selected
-                                            ? Icon(
-                                                Icons.check_rounded,
-                                                size: 18,
-                                                color: scheme.onPrimary,
-                                              )
-                                            : null,
                                       ),
-                                    ],
-                                  ),
+                                    );
+                                  },
                                 ),
-                              ),
-                            ),
-                          );
-                        },
+                        ),
                       ),
+                    ],
+                  ),
+                )
+              ],
+            ),
+            // F21: add friend sits on the bottom bar (no FAB clash).
+            bottomNavigationBar: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Row(
+                  children: [
+                    Semantics(
+                      button: true,
+                      label: strings.addPerson,
+                      child: FloatingActionButton(
+                        key: _addKey,
+                        heroTag: 'add_user_fab',
+                        onPressed: _handleAddPressed,
+                        tooltip: strings.addPerson,
+                        child: const Icon(Icons.add_rounded),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        key: _nextKey,
+                        height: 56,
+                        child: FilledButton.icon(
+                          onPressed: _continue,
+                          icon: const Icon(Icons.arrow_forward_rounded),
+                          label: Text(strings.continueToOrders),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              )
-            ],
-          ),
-          // F21: add friend sits on the bottom bar (no FAB clash).
-          bottomNavigationBar: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Row(
-                children: [
-                  Semantics(
-                    button: true,
-                    label: strings.addPerson,
-                    child: FloatingActionButton(
-                      key: _addKey,
-                      heroTag: 'add_user_fab',
-                      onPressed: _crew.canAddToRoster
-                          ? _openAddDialog
-                          : () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    strings.maxCrewRosterReached(
-                                      AppValues.maxCrewRoster,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                      tooltip: strings.addPerson,
-                      child: const Icon(Icons.add_rounded),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SizedBox(
-                      key: _nextKey,
-                      height: 56,
-                      child: FilledButton.icon(
-                        onPressed: _continue,
-                        icon: const Icon(Icons.arrow_forward_rounded),
-                        label: Text(strings.continueToOrders),
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
-          ),
         );
-        },
+      },
     );
   }
 }

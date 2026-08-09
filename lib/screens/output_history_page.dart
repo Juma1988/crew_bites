@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/app_haptics.dart';
+import '../core/extras_split_mode.dart';
 import '../core/friend_icon_style.dart';
 import '../core/states/app_settings.dart';
 import '../core/states/bundles_store.dart';
@@ -120,8 +121,18 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     await OrderStore.pushHistory(session, history, _prefs);
   }
 
+  /// Split mode to apply: by-value only when prices are on, else even.
+  ExtrasSplitMode _splitMode(bool pricesOn) =>
+      pricesOn ? AppSettings.instance.extrasSplitMode : ExtrasSplitMode.even;
+
+  /// Round per-person shares to whole units when prices are on + setting.
+  bool _roundTotals(bool pricesOn) =>
+      pricesOn && AppSettings.instance.roundTotals;
+
   String _formatSummary(OrderSession session) {
     final pricesOn = AppSettings.instance.pricesEnabled;
+    final splitMode = _splitMode(pricesOn);
+    final roundTotals = _roundTotals(pricesOn);
     final buf = StringBuffer();
     buf.writeln(AppTheme.brandName);
     if (session.hasPlace) buf.writeln(session.groupName);
@@ -138,7 +149,11 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
         buf.writeln('${p.name}: ${t.emptyOrder}');
         continue;
       }
-      final total = session.personGrandTotal(p.id);
+      final total = session.personGrandTotalFor(
+        p.id,
+        mode: splitMode,
+        round: roundTotals,
+      );
       if (pricesOn && total > 0) {
         buf.writeln('${p.name} - ${t.money(total)}');
       } else {
@@ -332,9 +347,8 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
   /// 'update' for “Update bundle”.
   String? _bundleActionFor(OrderSession session) {
     final name = session.groupName?.trim() ?? '';
-    final mixed = name == 'Mixed' ||
-        name == 'مختلط' ||
-        name == t.mixedBundleName.trim();
+    final mixed =
+        name == 'Mixed' || name == 'مختلط' || name == t.mixedBundleName.trim();
     if (mixed) return null;
 
     RestaurantGroup? match;
@@ -353,7 +367,8 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
         .map((f) => f.toLowerCase().trim())
         .toSet();
     final items = match.items
-        .where((i) => !AppValues.specialFoodKeys.contains(i.toLowerCase().trim()))
+        .where(
+            (i) => !AppValues.specialFoodKeys.contains(i.toLowerCase().trim()))
         .map((i) => i.toLowerCase().trim())
         .toSet();
     final added = ordered.difference(items);
@@ -433,7 +448,8 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('⚡ $remaining more swipe${remaining > 1 ? 's' : ''}...'),
+                content: Text(
+                    '⚡ $remaining more swipe${remaining > 1 ? 's' : ''}...'),
                 duration: const Duration(milliseconds: 800),
                 behavior: SnackBarBehavior.floating,
               ),
@@ -502,238 +518,282 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
         final current = _current;
         final hasCurrent = current != null && current.hasContent;
 
-        return SummaryOnboarding(key: _summaryOnboardingKey, child: Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: AppTheme.heroGradient(scheme),
-              ),
-            ),
-          ),
-          SafeArea(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: _handleScrollNotification,
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 18, 12, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          children: [
-                            Semantics(
-                              button: true,
-                              label: MaterialLocalizations.of(context)
-                                  .backButtonTooltip,
-                              child: IconButton(
-                                onPressed: () => Navigator.maybePop(context),
-                                icon: const Icon(Icons.arrow_back_rounded),
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                _fromHistory
-                                    ? strings.pastOrderTitle
-                                    : strings.summaryTitle,
-                                style: theme.textTheme.titleLarge,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (!_fromHistory)
-                          const WizardStepBar(currentStep: 3),
-                      ],
+        return SummaryOnboarding(
+          key: _summaryOnboardingKey,
+          child: Scaffold(
+            body: Stack(
+              children: [
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.heroGradient(scheme),
                     ),
                   ),
                 ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(22, 8, 22, 40),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 20),
-                        if (!hasCurrent)
-                          _EmptySummary(
-                            t: strings,
-                            onHome: () => Navigator.popUntil(
-                              context,
-                              (r) => r.isFirst,
-                            ),
-                          )
-                        else ...[
-                          // ── 1) Whole order: item → units ──────────
-                          SectionCard(
-                            key: _wholeOrderKey,
-                            title: strings.orderItemsTitle,
-                            subtitle: strings.orderItemsSubtitle,
+                SafeArea(
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: _handleScrollNotification,
+                    child: CustomScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 18, 12, 0),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                if (current.hasPlace) ...[
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Chip(
-                                      avatar: const Icon(
-                                        Icons.storefront_rounded,
-                                        size: 16,
+                                Row(
+                                  children: [
+                                    Semantics(
+                                      button: true,
+                                      label: MaterialLocalizations.of(context)
+                                          .backButtonTooltip,
+                                      child: IconButton(
+                                        onPressed: () =>
+                                            Navigator.maybePop(context),
+                                        icon: const Icon(
+                                            Icons.arrow_back_rounded),
                                       ),
-                                      label: Text(current.groupName!),
-                                      visualDensity: VisualDensity.compact,
-                                      materialTapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
                                     ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                ],
-                                if (current.aggregateFoods().isEmpty)
-                                  Text(
-                                    strings.emptyOrder,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: scheme.onSurfaceVariant,
+                                    Expanded(
+                                      child: Text(
+                                        _fromHistory
+                                            ? strings.pastOrderTitle
+                                            : strings.summaryTitle,
+                                        style: theme.textTheme.titleLarge,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (!_fromHistory)
+                                  const WizardStepBar(currentStep: 3),
+                              ],
+                            ),
+                          ),
+                        ),
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(22, 8, 22, 40),
+                          sliver: SliverToBoxAdapter(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const SizedBox(height: 20),
+                                if (!hasCurrent)
+                                  _EmptySummary(
+                                    t: strings,
+                                    onHome: () => Navigator.popUntil(
+                                      context,
+                                      (r) => r.isFirst,
                                     ),
                                   )
-                                else
-                                  for (final a in current.aggregateFoods()) ...[
-                                    // Form: [ 2  Eggs     14 ] — qty, name, total
-                                    _OrderItemRow(
-                                      title: strings.foodTitle(a.title),
-                                      qtyLabel: '${a.qty}',
-                                      showPrice: pricesOn,
-                                      priceLabel: pricesOn
-                                          ? strings.formatAmount(a.lineTotal)
-                                          : null,
+                                else ...[
+                                  // ── 1) Whole order: item → units ──────────
+                                  SectionCard(
+                                    key: _wholeOrderKey,
+                                    title: strings.orderItemsTitle,
+                                    subtitle: strings.orderItemsSubtitle,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        if (current.hasPlace) ...[
+                                          Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Chip(
+                                              avatar: const Icon(
+                                                Icons.storefront_rounded,
+                                                size: 16,
+                                              ),
+                                              label: Text(current.groupName!),
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 10),
+                                        ],
+                                        if (current.aggregateFoods().isEmpty)
+                                          Text(
+                                            strings.emptyOrder,
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
+                                              color: scheme.onSurfaceVariant,
+                                            ),
+                                          )
+                                        else
+                                          for (final a
+                                              in current.aggregateFoods()) ...[
+                                            // Form: [ 2  Eggs     14 ] — qty, name, total
+                                            _OrderItemRow(
+                                              title: strings.foodTitle(a.title),
+                                              qtyLabel: '${a.qty}',
+                                              showPrice: pricesOn,
+                                              priceLabel: pricesOn
+                                                  ? strings
+                                                      .formatAmount(a.lineTotal)
+                                                  : null,
+                                            ),
+                                            const SizedBox(height: 8),
+                                          ],
+                                        if (pricesOn) ...[
+                                          const Divider(height: 20),
+                                          Align(
+                                            alignment: Alignment.centerRight,
+                                            child: Text(
+                                              '${strings.foodSubtotalLabel}: ${strings.money(current.orderTotal)}',
+                                              style: theme.textTheme.titleSmall
+                                                  ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
-                                    const SizedBox(height: 8),
-                                  ],
-                                if (pricesOn) ...[
-                                  const Divider(height: 20),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: Text(
-                                      '${strings.foodSubtotalLabel}: ${strings.money(current.orderTotal)}',
-                                      style: theme.textTheme.titleSmall
-                                          ?.copyWith(
-                                        fontWeight: FontWeight.w700,
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  // ── 2) Who ordered what (saved order) ──────
+                                  Builder(
+                                    builder: (context) {
+                                      // Only people who actually ordered something.
+                                      final orderedPeople =
+                                          current.peopleWithOrders;
+                                      final showMoney = pricesOn;
+                                      return SectionCard(
+                                        key: _whoOrderedKey,
+                                        title: strings.whoOrderedTitle,
+                                        child: orderedPeople.isEmpty
+                                            ? Text(
+                                                strings.emptyOrder,
+                                                style: theme
+                                                    .textTheme.bodyMedium
+                                                    ?.copyWith(
+                                                  color:
+                                                      scheme.onSurfaceVariant,
+                                                ),
+                                              )
+                                            : Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                children: [
+                                                  for (final (i, p)
+                                                      in orderedPeople
+                                                          .indexed) ...[
+                                                    _PersonBlock(
+                                                      person: p,
+                                                      index: i,
+                                                      lines: current
+                                                          .linesFor(p.id),
+                                                      emptyLabel:
+                                                          strings.emptyOrder,
+                                                      showPrices: pricesOn,
+                                                      extrasShare: pricesOn
+                                                          ? current
+                                                              .personExtrasShareFor(
+                                                              p.id,
+                                                              mode: _splitMode(
+                                                                pricesOn,
+                                                              ),
+                                                              round:
+                                                                  _roundTotals(
+                                                                pricesOn,
+                                                              ),
+                                                            )
+                                                          : 0,
+                                                      totalLabel: showMoney
+                                                          ? strings
+                                                              .personTotalLabel(
+                                                              current
+                                                                  .personGrandTotalFor(
+                                                                p.id,
+                                                                mode:
+                                                                    _splitMode(
+                                                                  pricesOn,
+                                                                ),
+                                                                round:
+                                                                    _roundTotals(
+                                                                  pricesOn,
+                                                                ),
+                                                              ),
+                                                            )
+                                                          : null,
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                  ],
+                                                ],
+                                              ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  // Actions
+                                  Column(
+                                    key: _actionsKey,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: FilledButton.icon(
+                                              onPressed: () => _share(current),
+                                              icon: const Icon(
+                                                  Icons.ios_share_rounded),
+                                              label: Text(strings.shareSummary),
+                                            ),
+                                          ),
+                                          if (_bundleActionFor(current)
+                                              case final action?) ...[
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: FilledButton.icon(
+                                                onPressed: () =>
+                                                    action == 'update'
+                                                        ? _updateBundle(current)
+                                                        : _buildBundle(current),
+                                                icon: Icon(
+                                                  action == 'update'
+                                                      ? Icons.update_rounded
+                                                      : Icons
+                                                          .playlist_add_rounded,
+                                                  size: 20,
+                                                ),
+                                                label: Text(
+                                                  action == 'update'
+                                                      ? strings.updateBundleCta
+                                                      : strings.createBundleCta,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
-                                    ),
+                                      const SizedBox(height: 10),
+                                      if (_fromHistory)
+                                        FilledButton.tonalIcon(
+                                          onPressed: () => _orderAgain(current),
+                                          icon:
+                                              const Icon(Icons.replay_rounded),
+                                          label: Text(strings.orderAgainCta),
+                                        )
+                                      else
+                                        FilledButton.tonalIcon(
+                                          onPressed: _finishOrder,
+                                          icon: const Icon(
+                                              Icons.check_circle_outline),
+                                          label: Text(strings.finishOrder),
+                                        ),
+                                    ],
                                   ),
                                 ],
                               ],
                             ),
                           ),
-                          const SizedBox(height: 16),
-
-                          // ── 2) Who ordered what (saved order) ──────
-                          Builder(
-                            builder: (context) {
-                              // Only people who actually ordered something.
-                              final orderedPeople = current.peopleWithOrders;
-                              final showMoney = pricesOn;
-                              return SectionCard(
-                                key: _whoOrderedKey,
-                                title: strings.whoOrderedTitle,
-                                child: orderedPeople.isEmpty
-                                    ? Text(
-                                        strings.emptyOrder,
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(
-                                          color: scheme.onSurfaceVariant,
-                                        ),
-                                      )
-                                    : Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          for (final (i, p)
-                                              in orderedPeople.indexed) ...[
-                                            _PersonBlock(
-                                              person: p,
-                                              index: i,
-                                              lines: current.linesFor(p.id),
-                                              emptyLabel: strings.emptyOrder,
-                                              showPrices: pricesOn,
-                                              extrasShare: pricesOn
-                                                  ? current.personExtrasShare(
-                                                      p.id,
-                                                    )
-                                                  : 0,
-                                              totalLabel: showMoney
-                                                  ? strings.personTotalLabel(
-                                                      current.personGrandTotal(
-                                                        p.id,
-                                                      ),
-                                                    )
-                                                  : null,
-                                            ),
-                                            const SizedBox(height: 12),
-                                          ],
-                                        ],
-                                      ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Actions
-                          Column(
-                            key: _actionsKey,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: FilledButton.icon(
-                                      onPressed: () => _share(current),
-                                      icon: const Icon(Icons.ios_share_rounded),
-                                      label: Text(strings.shareSummary),
-                                    ),
-                                  ),
-                                  if (_bundleActionFor(current)
-                                      case final action?) ...[
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: FilledButton.icon(
-                                        onPressed: () => action == 'update'
-                                            ? _updateBundle(current)
-                                            : _buildBundle(current),
-                                        icon: Icon(
-                                          action == 'update'
-                                              ? Icons.update_rounded
-                                              : Icons.playlist_add_rounded,
-                                          size: 20,
-                                        ),
-                                        label: Text(
-                                          action == 'update'
-                                              ? strings.updateBundleCta
-                                              : strings.createBundleCta,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              if (_fromHistory)
-                                FilledButton.tonalIcon(
-                                  onPressed: () => _orderAgain(current),
-                                  icon: const Icon(Icons.replay_rounded),
-                                  label: Text(strings.orderAgainCta),
-                                )
-                              else
-                                FilledButton.tonalIcon(
-                                  onPressed: _finishOrder,
-                                  icon: const Icon(Icons.check_circle_outline),
-                                  label: Text(strings.finishOrder),
-                                ),
-                            ],
-                          ),
-                        ],
+                        ),
                       ],
                     ),
                   ),
@@ -741,11 +801,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
               ],
             ),
           ),
-        ),
-      ],
-    ),
-  ),
-  );
+        );
       },
     );
   }
@@ -996,39 +1052,39 @@ class _PersonBlock extends StatelessWidget {
                     ],
                   ],
                 ),
-                );
-              }),
-            if (showPrices && extrasShare > 0) ...[
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Text(
-                    t.extrasSectionTitle,
+              );
+            }),
+          if (showPrices && extrasShare > 0) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text(
+                  t.extrasSectionTitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    t.extrasShareHint,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      t.extrasShareHint,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
+                ),
+                Text(
+                  t.formatAmount(extrasShare),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: scheme.primary,
                   ),
-                  Text(
-                    t.formatAmount(extrasShare),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: scheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ],
+        ],
       ),
     );
   }
