@@ -8,12 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.5] - 2026-08-08
 
 ### Added
-- Split tip & delivery equally or by order value (Settings)
-- Round per-person shares to whole numbers so the totals sum exactly
-- Tip as a percentage of the food subtotal
-- Keep-unfavorited-friends reminder when starting an order
+- Split tip & delivery equally or by order value (Settings → Split)
+- Tip as a % of the food subtotal, with a live "Tip ≈" preview
+- Round shares to whole numbers so the split sums to exactly the bill
+- Tap the Tip & delivery card to edit (no long-press needed)
+- Tip suggestions that round the order up to clean multiples of 10
+- Keep-unfavorited-friends reminder when you start an order
 - Tap the empty "Nobody yet" card to add your first friend
 - Versioned in-app "What's new", shown once per update
+
+### Improved
+- Delivery field moved above Tip — sets the bill the tip % scales from
+- Tip amount and Tip % are now mutually exclusive (one grays out the other)
+- Tip suggestion chips show honest rounded totals
+- "Services" renamed to "Tip & delivery" throughout
+- Added Qatari Riyal (ر.ق); Saudi Riyal now shows the ﷼ sign
+- `main.dart` cleaned up: routes, locales, navigator and bootstrap extracted
 
 ## [1.0.3] - 2026-08-05
 
