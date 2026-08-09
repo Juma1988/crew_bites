@@ -85,12 +85,17 @@ class _ExtrasDialogBodyState extends State<_ExtrasDialogBody> {
   double? _previewTip;
   bool _tipHasValue = false;
   bool _pctHasValue = false;
+  double _delivery = 0;
+
+  /// Tip % scales from food + delivery.
+  double get _base => widget.orderTotal + _delivery;
 
   @override
   void initState() {
     super.initState();
     widget.tipCtrl.addListener(_refresh);
     widget.pctCtrl.addListener(_refresh);
+    widget.deliveryCtrl.addListener(_refresh);
     _refresh();
   }
 
@@ -98,6 +103,7 @@ class _ExtrasDialogBodyState extends State<_ExtrasDialogBody> {
   void dispose() {
     widget.tipCtrl.removeListener(_refresh);
     widget.pctCtrl.removeListener(_refresh);
+    widget.deliveryCtrl.removeListener(_refresh);
     super.dispose();
   }
 
@@ -108,38 +114,26 @@ class _ExtrasDialogBodyState extends State<_ExtrasDialogBody> {
     final pct = double.tryParse(
       widget.pctCtrl.text.trim().replaceAll(',', '.'),
     );
-    final preview =
-        (pct != null && pct > 0) ? widget.orderTotal * pct / 100 : null;
+    final delivery = double.tryParse(
+          widget.deliveryCtrl.text.trim().replaceAll(',', '.'),
+        ) ??
+        0;
+    // Compute from the live delivery value (not the cached _delivery, which
+    // is only updated inside setState) so the preview tracks every keystroke.
+    final base = widget.orderTotal + delivery;
+    final preview = (pct != null && pct > 0) ? base * pct / 100 : null;
     setState(() {
       _tipHasValue = tip != null && tip > 0;
       _pctHasValue = pct != null && pct > 0;
+      _delivery = delivery;
       _previewTip = preview;
     });
-  }
-
-  /// Tip suggestions that push the food total up to a clean multiple of 10.
-  List<double> _suggestions() {
-    if (widget.orderTotal <= 0) return [];
-    final base = widget.orderTotal.ceilToDouble();
-    var target = (base / 10).ceil() * 10;
-    if (target <= base) target += 10;
-    return [target, target + 10, target + 20]
-        .map((v) => v - widget.orderTotal)
-        .where((tip) => tip > 0)
-        .toList();
-  }
-
-  void _applySuggestion(double tip) {
-    widget.pctCtrl.clear();
-    widget.tipCtrl.text = tip.round().toString();
-    _refresh();
   }
 
   @override
   Widget build(BuildContext context) {
     final t = widget.t;
     final preview = _previewTip;
-    final suggestions = _suggestions();
     return AlertDialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusCard),
@@ -164,25 +158,6 @@ class _ExtrasDialogBodyState extends State<_ExtrasDialogBody> {
             ),
           ),
           const SizedBox(height: 12),
-          // Tip suggestions: round the order total up to a multiple of 10.
-          if (suggestions.isNotEmpty && !_pctHasValue) ...[
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final tip in suggestions)
-                  ActionChip(
-                    label: Text(() {
-                      final applied = tip.round();
-                      return '$applied${t.currencySuffix} → '
-                          '${(widget.orderTotal + applied).round()}';
-                    }()),
-                    onPressed: () => _applySuggestion(tip),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-          ],
           TextField(
             controller: widget.tipCtrl,
             enabled: !_pctHasValue,
@@ -214,9 +189,9 @@ class _ExtrasDialogBodyState extends State<_ExtrasDialogBody> {
             ),
           ),
           const SizedBox(height: 6),
-          // Show the food total the % is calculated from.
+          // Show the total (food + delivery) the % is calculated from.
           Text(
-            '${t.foodSubtotalLabel}: ${t.money(widget.orderTotal)}',
+            '${t.foodSubtotalLabel}: ${t.money(_base)}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -237,7 +212,7 @@ class _ExtrasDialogBodyState extends State<_ExtrasDialogBody> {
             final double? tipPercent;
             if (pct != null && pct > 0) {
               tipPercent = pct;
-              tip = widget.orderTotal * pct / 100;
+              tip = _base * pct / 100;
             } else {
               tipPercent = null;
               tip = double.tryParse(
