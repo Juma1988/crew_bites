@@ -401,15 +401,18 @@ class _SettingsPageState extends State<SettingsPage> {
                             },
                           ),
                           const SizedBox(height: 16),
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(strings.roundTotalsLabel),
-                            subtitle: Text(strings.roundTotalsBody),
-                            value: settings.roundTotals,
-                            onChanged: (v) {
-                              AppHaptics.selectionClick();
-                              AppSettings.instance.setRoundTotals(v);
-                            },
+                          Material(
+                            color: Colors.transparent,
+                            child: SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(strings.roundTotalsLabel),
+                              subtitle: Text(strings.roundTotalsBody),
+                              value: settings.roundTotals,
+                              onChanged: (v) {
+                                AppHaptics.selectionClick();
+                                AppSettings.instance.setRoundTotals(v);
+                              },
+                            ),
                           ),
                         ],
                       ),
@@ -663,30 +666,33 @@ class _SettingsPageState extends State<SettingsPage> {
                             ),
                           ),
                           const SizedBox(height: 14),
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: Icon(
-                              Icons.new_releases_rounded,
-                              color: scheme.primary,
-                            ),
-                            title: Text(
-                              strings.whatsNewTitle,
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
+                          Material(
+                            color: Colors.transparent,
+                            child: ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(
+                                Icons.new_releases_rounded,
+                                color: scheme.primary,
                               ),
+                              title: Text(
+                                strings.whatsNewTitle,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              subtitle: Text('v${AppValues.appVersion}'),
+                              trailing: Icon(
+                                Icons.chevron_right_rounded,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                              onTap: () {
+                                AppHaptics.selectionClick();
+                                Navigator.pushNamed(
+                                  context,
+                                  ChangelogPage.route,
+                                );
+                              },
                             ),
-                            subtitle: Text('v${AppValues.appVersion}'),
-                            trailing: Icon(
-                              Icons.chevron_right_rounded,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                            onTap: () {
-                              AppHaptics.selectionClick();
-                              Navigator.pushNamed(
-                                context,
-                                ChangelogPage.route,
-                              );
-                            },
                           ),
                           const SizedBox(height: 8),
                           OutlinedButton.icon(
