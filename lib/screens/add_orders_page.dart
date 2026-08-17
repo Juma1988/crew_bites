@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../core/app_haptics.dart';
+import '../core/debug/debug_registry.dart';
 import '../core/states/app_settings.dart';
 import '../core/states/bundles_store.dart';
 import '../core/states/order_store.dart';
@@ -11,19 +13,19 @@ import '../core/values/app_values.dart';
 import '../models/order_models.dart';
 import '../models/restaurant_group.dart';
 import '../support/dialog/extras_dialog.dart';
+import '../widgets/orders_onboarding.dart';
 import '../widgets/prices_toggle_button.dart';
 import '../widgets/wizard_step_bar.dart';
-import 'add_user_page.dart';
-import 'output_history_page.dart';
-import 'add_orders/widgets/bundle_pill.dart';
 import 'add_orders/widgets/add_bundle_pill.dart';
-import 'add_orders/widgets/person_rail_tile.dart';
 import 'add_orders/widgets/add_food_card.dart';
+import 'add_orders/widgets/bundle_items_editor_sheet.dart';
+import 'add_orders/widgets/bundle_pill.dart';
 import 'add_orders/widgets/food_swipe_bg.dart';
 import 'add_orders/widgets/food_tile.dart';
 import 'add_orders/widgets/missing_prices_dialog.dart';
-import 'add_orders/widgets/bundle_items_editor_sheet.dart';
-import '../widgets/orders_onboarding.dart';
+import 'add_orders/widgets/person_rail_tile.dart';
+import 'add_user_page.dart';
+import 'output_history_page.dart';
 
 /// Split layout: people (left) · food menu (right).
 /// Bundle pills at top load short placeholder menus.
@@ -31,6 +33,7 @@ class AddOrdersPage extends StatefulWidget {
   const AddOrdersPage({super.key});
 
   static const route = AppValues.routeAddOrders;
+  static const String debugSourceFile = 'lib/screens/add_orders_page.dart';
 
   @override
   State<AddOrdersPage> createState() => _AddOrdersPageState();
@@ -87,8 +90,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
       _session = session;
       _groups = groups;
       _foods = foods;
-      _selectedPersonId =
-          session?.people.isNotEmpty == true ? session!.people.first.id : null;
+      _selectedPersonId = session?.people.isNotEmpty == true ? session!.people.first.id : null;
       _ready = true;
     });
 
@@ -112,6 +114,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
     setState(() {
       _groups = BundlesStore.replace(_groups, next);
     });
+    BundlesStore.save(_groups, _prefs);
   }
 
   Future<void> _save(OrderSession session) async {
@@ -173,8 +176,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
     return null;
   }
 
-  bool _isSpecialFood(String food) =>
-      AppValues.specialFoodKeys.contains(food.toLowerCase().trim());
+  bool _isSpecialFood(String food) => AppValues.specialFoodKeys.contains(food.toLowerCase().trim());
 
   /// Tap pill: **add** that bundle's items (no toggle / no replace).
   Future<void> _onBundlePillTap(RestaurantGroup bundle) async {
@@ -207,12 +209,10 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
     final session = _session;
     if (session != null) {
       final prev = session.groupId;
-      final name = (prev != null &&
-              prev.isNotEmpty &&
-              prev != RestaurantGroup.freeformId &&
-              prev != live.id)
-          ? t.mixedBundleName
-          : live.displayName(arabic: t.isAr);
+      final name =
+          (prev != null && prev.isNotEmpty && prev != RestaurantGroup.freeformId && prev != live.id)
+              ? t.mixedBundleName
+              : live.displayName(arabic: t.isAr);
       // Apply saved bundle unit prices onto the current order.
       var next = session.copyWith(
         groupId: live.id,
@@ -228,6 +228,10 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
           next = OrderStore.setFoodPrice(next, title, e.value);
         }
       }
+      // Apply default extras from the bundle.
+      if (live.defaultTax.hasValue) next = next.copyWith(tax: live.defaultTax);
+      if (live.defaultService.hasValue) next = next.copyWith(service: live.defaultService);
+      if (live.defaultDelivery.hasValue) next = next.copyWith(delivery: live.defaultDelivery);
       await _save(next);
     }
 
@@ -236,9 +240,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          added > 0
-              ? t.bundleItemsAdded(label, added)
-              : t.bundleItemsAlreadyAdded,
+          added > 0 ? t.bundleItemsAdded(label, added) : t.bundleItemsAlreadyAdded,
         ),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
@@ -351,9 +353,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
   List<OrderLine> _linesForFood(String foodTitle) {
     final s = _session;
     if (s == null) return const [];
-    return s.lines
-        .where((l) => l.title.toLowerCase() == foodTitle.toLowerCase())
-        .toList();
+    return s.lines.where((l) => l.title.toLowerCase() == foodTitle.toLowerCase()).toList();
   }
 
   Person? _personById(String id) {
@@ -441,8 +441,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
     final session = _session;
     if (session != null) {
       final prices = Map<String, double>.from(session.foodPrices)..remove(key);
-      final lines =
-          session.lines.where((l) => l.title.toLowerCase() != key).toList();
+      final lines = session.lines.where((l) => l.title.toLowerCase() != key).toList();
       // Auto-deselect bundle when none of its items remain in the list.
       var gid = session.groupId;
       var gName = session.groupName;
@@ -488,6 +487,14 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
     return rtl ? DismissDirection.endToStart : DismissDirection.startToEnd;
   }
 
+  /// Determine the [ExtrasCategory] that has a value in [session], or return [ExtrasCategory.service] as fallback.
+  ExtrasCategory _categoryFromField(OrderSession session) {
+    if (session.tip.hasValue) return ExtrasCategory.tip;
+    if (session.delivery.hasValue) return ExtrasCategory.delivery;
+    if (session.tax.hasValue) return ExtrasCategory.tax;
+    return ExtrasCategory.service;
+  }
+
   /// Add food: name always; price field when Prices is on (default 0).
   Future<void> _openAddFoodDialog() async {
     final controller = TextEditingController();
@@ -528,8 +535,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: priceCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                   ],
@@ -583,31 +589,65 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
     await _addFoodToActiveMenu(result.name, price: result.price);
   }
 
-  /// Long-press food card → set unit price (default 0 if never set).
-  /// For "extras" item, opens dual-field dialog (tip + delivery).
+  /// Tap food card → set unit price or edit extras.
+  /// For "extras" item, opens 4-field dialog (tip, delivery, tax, service).
   Future<void> _openEditFoodPriceDialog(String foodTitle) async {
-    if (!AppSettings.instance.pricesEnabled) return;
+    if (!AppSettings.instance.pricesEnabled && !_isSpecialFood(foodTitle)) return;
     final session = _session;
     if (session == null) return;
 
-    // Special handling for extras item: open dual-field dialog.
+    // Special handling for extras item: open 4-field dialog.
     if (_isSpecialFood(foodTitle)) {
+      final settings = AppSettings.instance;
       final result = await showExtrasDialog(
         context,
-        initialTip: session.tipAmount,
-        initialDelivery: session.deliveryFee,
-        initialPercent: session.tipPercent,
+        initialCategory: _categoryFromField(session),
+        initialTip: session.tip,
+        initialDelivery: session.delivery,
+        initialTax: session.tax,
+        initialService: session.service,
         orderTotal: session.orderTotal,
       );
       if (result == null || !mounted) return;
       AppHaptics.selectionClick();
-      await _save(session.copyWith(
-        tipAmount: result.tip,
-        tipPercent: result.tipPercent,
-        clearTipPercent: result.tipPercent == null,
-        deliveryFee: result.delivery,
+      // Persist last-used settings for each category that has a value.
+      final all = result.allFields;
+      if (all[ExtrasCategory.tip]?.hasValue == true) {
+        await settings.setLastTip(all[ExtrasCategory.tip]!);
+      }
+      if (all[ExtrasCategory.tax]?.hasValue == true) {
+        await settings.setLastTax(all[ExtrasCategory.tax]!);
+      }
+      if (all[ExtrasCategory.service]?.hasValue == true) {
+        await settings.setLastService(all[ExtrasCategory.service]!);
+      }
+      // Save extras back to the current bundle.
+      if (session.groupId != null && session.groupId!.isNotEmpty) {
+        final gid = session.groupId!;
+        final bundleIdx = _groups.indexWhere((g) => g.id == gid);
+        if (bundleIdx >= 0) {
+          var bundle = _groups[bundleIdx];
+          if (all[ExtrasCategory.tax]?.hasValue == true) {
+            bundle = bundle.copyWith(defaultTax: all[ExtrasCategory.tax]!);
+          }
+          if (all[ExtrasCategory.service]?.hasValue == true) {
+            bundle = bundle.copyWith(defaultService: all[ExtrasCategory.service]!);
+          }
+          if (all[ExtrasCategory.delivery]?.hasValue == true) {
+            bundle = bundle.copyWith(defaultDelivery: all[ExtrasCategory.delivery]!);
+          }
+          _updateGroup(bundle);
+        }
+      }
+      // Rebuild session with all 4 fields.
+      final updatedSession = session.copyWith(
+        tip: all[ExtrasCategory.tip],
+        delivery: all[ExtrasCategory.delivery],
+        tax: all[ExtrasCategory.tax],
+        service: all[ExtrasCategory.service],
         updatedAt: DateTime.now(),
-      ));
+      );
+      await _save(updatedSession);
       return;
     }
 
@@ -738,6 +778,25 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
       return;
     }
 
+    // Warning: people who didn't order anything.
+    final s = session;
+    final noFoodPeople = s.people.where((p) => s.linesFor(p.id).isEmpty).toList();
+    if (noFoodPeople.isNotEmpty) {
+      final confirmed = await _showNoFoodWarning(noFoodPeople);
+      if (confirmed == null || !mounted) return;
+      if (confirmed) {
+        // Remove people with no food, keep their lines (none).
+        final keepIds = s.people.where((p) => s.linesFor(p.id).isNotEmpty).map((p) => p.id).toSet();
+        session = s.copyWith(
+          people: s.people.where((p) => keepIds.contains(p.id)).toList(),
+        );
+        await _save(session);
+        if (!mounted) return;
+      } else {
+        return;
+      }
+    }
+
     // When Prices is on, block Next until missing unit prices are filled
     // (or marked unknown). Values are written onto the session so
     // Done & save / history keep the last prices entered.
@@ -751,11 +810,9 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
       }
     }
 
-    // Validate extras: warn if both tip and delivery are blank.
+    // Validate extras: warn if all extras are blank.
     // Only relevant when Prices is on — services are hidden otherwise.
-    if (AppSettings.instance.pricesEnabled &&
-        session.effectiveTip == 0 &&
-        session.deliveryFee == 0) {
+    if (AppSettings.instance.pricesEnabled && session.totalExtras <= 0) {
       final action = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -778,19 +835,51 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
       );
       if (action == null || !mounted) return;
       if (action == 'add') {
+        final settings = AppSettings.instance;
         final extrasResult = await showExtrasDialog(
           context,
-          initialTip: session.tipAmount,
-          initialDelivery: session.deliveryFee,
-          initialPercent: session.tipPercent,
+          initialCategory: _categoryFromField(session),
+          initialTip: session.tip,
+          initialDelivery: session.delivery,
+          initialTax: session.tax,
+          initialService: session.service,
           orderTotal: session.orderTotal,
         );
         if (extrasResult == null || !mounted) return;
+        // Apply all 4 categories.
+        final all = extrasResult.allFields;
+        if (all[ExtrasCategory.tip]?.hasValue == true) {
+          await settings.setLastTip(all[ExtrasCategory.tip]!);
+        }
+        if (all[ExtrasCategory.tax]?.hasValue == true) {
+          await settings.setLastTax(all[ExtrasCategory.tax]!);
+        }
+        if (all[ExtrasCategory.service]?.hasValue == true) {
+          await settings.setLastService(all[ExtrasCategory.service]!);
+        }
+        // Save extras back to the current bundle.
+        if (session.groupId != null && session.groupId!.isNotEmpty) {
+          final gid = session.groupId!;
+          final bundleIdx = _groups.indexWhere((g) => g.id == gid);
+          if (bundleIdx >= 0) {
+            var bundle = _groups[bundleIdx];
+            if (all[ExtrasCategory.tax]?.hasValue == true) {
+              bundle = bundle.copyWith(defaultTax: all[ExtrasCategory.tax]!);
+            }
+            if (all[ExtrasCategory.service]?.hasValue == true) {
+              bundle = bundle.copyWith(defaultService: all[ExtrasCategory.service]!);
+            }
+            if (all[ExtrasCategory.delivery]?.hasValue == true) {
+              bundle = bundle.copyWith(defaultDelivery: all[ExtrasCategory.delivery]!);
+            }
+            _updateGroup(bundle);
+          }
+        }
         session = session.copyWith(
-          tipAmount: extrasResult.tip,
-          tipPercent: extrasResult.tipPercent,
-          clearTipPercent: extrasResult.tipPercent == null,
-          deliveryFee: extrasResult.delivery,
+          tip: all[ExtrasCategory.tip],
+          delivery: all[ExtrasCategory.delivery],
+          tax: all[ExtrasCategory.tax],
+          service: all[ExtrasCategory.service],
         );
       }
     }
@@ -802,11 +891,51 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
     Navigator.pushNamed(context, OutputHistoryPage.route);
   }
 
+  /// Warning dialog for people who didn't order anything.
+  /// Returns true = confirm (remove them), false = go back, null = cancel.
+  Future<bool?> _showNoFoodWarning(List<Person> people) async {
+    final strings = t;
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+        ),
+        title: Text(strings.noFoodTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(strings.noFoodBody),
+            const SizedBox(height: 12),
+            for (final p in people) Text('• ${p.name}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(strings.goBack),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(strings.confirmRemove),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = t;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    if (AppSettings.instance.debugOverlayEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        DebugRegistry.currentFile.value = 'lib/screens/add_orders_page.dart';
+      });
+    }
 
     if (!_ready) {
       return Scaffold(
@@ -852,8 +981,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                           children: [
                             Semantics(
                               button: true,
-                              label: MaterialLocalizations.of(context)
-                                  .backButtonTooltip,
+                              label: MaterialLocalizations.of(context).backButtonTooltip,
                               child: IconButton(
                                 onPressed: () => Navigator.maybePop(context),
                                 icon: const Icon(Icons.arrow_back_rounded),
@@ -903,8 +1031,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                       ),
                                       selected: session?.groupId == pills[i].id,
                                       onTap: () => _onBundlePillTap(pills[i]),
-                                      onLongPress: () =>
-                                          _onBundlePillLongPress(pills[i]),
+                                      onLongPress: () => _onBundlePillLongPress(pills[i]),
                                     ),
                                   ],
                                   const SizedBox(width: 8),
@@ -931,34 +1058,29 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                     height: 72,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: scheme.primaryContainer
-                                          .withValues(alpha: 0.3),
+                                      color: scheme.primaryContainer.withValues(alpha: 0.3),
                                       border: Border.all(
-                                        color: scheme.primary
-                                            .withValues(alpha: 0.2),
+                                        color: scheme.primary.withValues(alpha: 0.2),
                                         width: 2,
                                       ),
                                     ),
                                     child: Icon(
                                       Icons.restaurant_rounded,
                                       size: 36,
-                                      color:
-                                          scheme.primary.withValues(alpha: 0.7),
+                                      color: scheme.primary.withValues(alpha: 0.7),
                                     ),
                                   ),
                                   const SizedBox(height: 16),
                                   Text(
                                     strings.noCrewOnOrder,
                                     textAlign: TextAlign.center,
-                                    style:
-                                        theme.textTheme.titleMedium?.copyWith(
+                                    style: theme.textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                   const SizedBox(height: 16),
                                   FilledButton.icon(
-                                    onPressed: () =>
-                                        Navigator.pushReplacementNamed(
+                                    onPressed: () => Navigator.pushReplacementNamed(
                                       context,
                                       AddUserPage.route,
                                     ),
@@ -982,8 +1104,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                   key: _crewKey,
                                   width: 72,
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
                                       Padding(
                                         padding: const EdgeInsets.only(
@@ -992,8 +1113,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                         ),
                                         child: Text(
                                           strings.crewColumn,
-                                          style: theme.textTheme.labelSmall
-                                              ?.copyWith(
+                                          style: theme.textTheme.labelSmall?.copyWith(
                                             color: scheme.primary,
                                             fontWeight: FontWeight.w800,
                                           ),
@@ -1002,12 +1122,10 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                       Expanded(
                                         child: ListView.separated(
                                           itemCount: people.length,
-                                          separatorBuilder: (a, b) =>
-                                              const SizedBox(height: 6),
+                                          separatorBuilder: (a, b) => const SizedBox(height: 6),
                                           itemBuilder: (context, i) {
                                             final p = people[i];
-                                            final selected =
-                                                p.id == _selectedPersonId;
+                                            final selected = p.id == _selectedPersonId;
                                             return PersonRailTile(
                                               person: p,
                                               index: i,
@@ -1025,8 +1143,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                 Expanded(
                                   key: _foodsKey,
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
                                       Padding(
                                         padding: const EdgeInsets.only(
@@ -1038,8 +1155,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                           children: [
                                             Text(
                                               strings.foodColumn,
-                                              style: theme.textTheme.labelLarge
-                                                  ?.copyWith(
+                                              style: theme.textTheme.labelLarge?.copyWith(
                                                 color: scheme.primary,
                                                 fontWeight: FontWeight.w800,
                                               ),
@@ -1048,9 +1164,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                             if (_selectedPerson != null)
                                               Text(
                                                 '→ ${_selectedPerson!.name}',
-                                                style: theme
-                                                    .textTheme.labelMedium
-                                                    ?.copyWith(
+                                                style: theme.textTheme.labelMedium?.copyWith(
                                                   color: _selectedPerson!.color,
                                                   fontWeight: FontWeight.w700,
                                                 ),
@@ -1067,11 +1181,10 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                               _foods,
                                             )
                                                 .where(
-                                                   // Hide the Tip & delivery row when Prices is off.
+                                                  // Hide the Tip & delivery row when Prices is off.
                                                   (f) =>
                                                       pricesOn ||
-                                                      !AppValues.specialFoodKeys
-                                                          .contains(
+                                                      !AppValues.specialFoodKeys.contains(
                                                         f.toLowerCase().trim(),
                                                       ),
                                                 )
@@ -1079,8 +1192,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                             // Always show food rows + a full-width + card.
                                             return ListView.separated(
                                               itemCount: menuFoods.length + 1,
-                                              separatorBuilder: (a, b) =>
-                                                  const SizedBox(height: 8),
+                                              separatorBuilder: (a, b) => const SizedBox(height: 8),
                                               itemBuilder: (context, i) {
                                                 if (i == menuFoods.length) {
                                                   return AddFoodCard(
@@ -1089,12 +1201,10 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                                   );
                                                 }
                                                 final food = menuFoods[i];
-                                                final lines =
-                                                    _linesForFood(food);
+                                                final lines = _linesForFood(food);
                                                 final assignees = <Person>[];
                                                 for (final l in lines) {
-                                                  final p =
-                                                      _personById(l.personId);
+                                                  final p = _personById(l.personId);
                                                   if (p != null &&
                                                       !assignees.any(
                                                         (x) => x.id == p.id,
@@ -1103,22 +1213,15 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                                   }
                                                 }
                                                 final qtyByPerson = {
-                                                  for (final l in lines)
-                                                    l.personId: l.qty,
+                                                  for (final l in lines) l.personId: l.qty,
                                                 };
-                                                final undoDir =
-                                                    _undoSwipeDirection;
-                                                final isEmptyCard =
-                                                    assignees.isEmpty;
-                                                final unitPrice = session
-                                                        ?.priceForTitle(food) ??
-                                                    0;
+                                                final undoDir = _undoSwipeDirection;
+                                                final isEmptyCard = assignees.isEmpty;
+                                                final unitPrice = session?.priceForTitle(food) ?? 0;
 
                                                 return LayoutBuilder(
-                                                  builder:
-                                                      (context, constraints) {
-                                                    final w =
-                                                        constraints.maxWidth;
+                                                  builder: (context, constraints) {
+                                                    final w = constraints.maxWidth;
                                                     final dismissMs = _motion(
                                                       AppValues.animListDismiss,
                                                     );
@@ -1130,20 +1233,15 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                                         ),
                                                         direction: undoDir,
                                                         // Slide out, then collapse list gap.
-                                                        movementDuration:
-                                                            dismissMs,
-                                                        resizeDuration:
-                                                            dismissMs,
-                                                        confirmDismiss:
-                                                            (_) async {
+                                                        movementDuration: dismissMs,
+                                                        resizeDuration: dismissMs,
+                                                        confirmDismiss: (_) async {
                                                           // Special items can't be swiped away.
-                                                          if (_isSpecialFood(
-                                                              food)) {
+                                                          if (_isSpecialFood(food)) {
                                                             return false;
                                                           }
                                                           if (isEmptyCard) {
-                                                            AppHaptics
-                                                                .mediumImpact();
+                                                            AppHaptics.mediumImpact();
                                                             // Let Dismissible animate;
                                                             // remove data in onDismissed.
                                                             return true;
@@ -1157,78 +1255,53 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                                                         onDismissed: (_) {
                                                           _removeFoodFromMenu(
                                                             food,
-                                                            fromDismissible:
-                                                                true,
+                                                            fromDismissible: true,
                                                           );
                                                         },
                                                         background: SizedBox(
                                                           width: w,
                                                           child: FoodSwipeBg(
                                                             label: isEmptyCard
-                                                                ? strings
-                                                                    .swipeRemoveFood
-                                                                : strings
-                                                                    .swipeUndoFood,
+                                                                ? strings.swipeRemoveFood
+                                                                : strings.swipeUndoFood,
                                                             icon: isEmptyCard
-                                                                ? Icons
-                                                                    .delete_outline_rounded
-                                                                : Icons
-                                                                    .undo_rounded,
+                                                                ? Icons.delete_outline_rounded
+                                                                : Icons.undo_rounded,
                                                             alignStart: undoDir ==
-                                                                DismissDirection
-                                                                    .startToEnd,
+                                                                DismissDirection.startToEnd,
                                                           ),
                                                         ),
                                                         child: SizedBox(
                                                           width: w,
                                                           child: FoodTile(
-                                                            title: strings
-                                                                .foodTitle(
-                                                                    food),
-                                                            // F22: only show amount when set (> 0).
-                                                            // For extras card, show combined tip + delivery.
+                                                            title: strings.foodTitle(food),
+                                                            // For extras card, show total extras.
                                                             priceText: pricesOn &&
                                                                     ((_isSpecialFood(food) &&
-                                                                            (session?.effectiveTip ?? 0) + (session?.deliveryFee ?? 0) >
+                                                                            (session?.totalExtras ??
+                                                                                    0) >
                                                                                 0) ||
                                                                         (!_isSpecialFood(food) &&
-                                                                            unitPrice >
-                                                                                0))
+                                                                            unitPrice > 0))
                                                                 ? strings.money(
-                                                                    _isSpecialFood(
-                                                                            food)
-                                                                        ? (session?.effectiveTip ??
-                                                                                0) +
-                                                                            (session?.deliveryFee ??
-                                                                                0)
+                                                                    _isSpecialFood(food)
+                                                                        ? session!.totalExtras
                                                                         : unitPrice,
                                                                   )
                                                                 : null,
-                                                            assignees:
-                                                                assignees,
-                                                            qtyByPerson:
-                                                                qtyByPerson,
-                                                            selectedPersonId:
-                                                                _selectedPersonId,
-                                                            hint: strings
-                                                                .tapToAssign,
-                                                            showPriceEdit:
-                                                                pricesOn,
-                                                            onTap: () =>
-                                                                _onFoodTap(
-                                                                    food),
-                                                            onEditPrice:
-                                                                pricesOn
-                                                                    ? () =>
-                                                                        _openEditFoodPriceDialog(
-                                                                          food,
-                                                                        )
-                                                                    : null,
-                                                            isCompact:
-                                                                _isSpecialFood(
-                                                                    food),
-                                                            crewIndexById:
-                                                                crewIndexById,
+                                                            assignees: assignees,
+                                                            qtyByPerson: qtyByPerson,
+                                                            selectedPersonId: _selectedPersonId,
+                                                            hint: strings.tapToAssign,
+                                                            showPriceEdit: pricesOn,
+                                                            onTap: () => _onFoodTap(food),
+                                                            onEditPrice: pricesOn
+                                                                ? () => _openEditFoodPriceDialog(
+                                                                      food,
+                                                                    )
+                                                                : null,
+                                                            isCompact: _isSpecialFood(food),
+                                                            crewIndexById: crewIndexById,
                                                           ),
                                                         ),
                                                       ),

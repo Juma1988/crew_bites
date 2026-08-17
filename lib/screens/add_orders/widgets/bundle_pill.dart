@@ -51,11 +51,6 @@ class BundlePill extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  group.emoji,
-                  style: const TextStyle(fontSize: 18),
-                ),
-                const SizedBox(width: 4),
-                Text(
                   label,
                   style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w800,

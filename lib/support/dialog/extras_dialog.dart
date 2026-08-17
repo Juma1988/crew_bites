@@ -3,236 +3,784 @@ import 'package:flutter/services.dart';
 
 import '../../core/theme.dart';
 import '../../core/translate.dart';
+import '../../core/values/app_values.dart';
+import '../../models/order_models.dart';
 
-/// Result of the extras dialog: tip (+ optional %) + delivery amounts.
+/// Result of the extras dialog with all 4 category fields.
 class ExtrasResult {
   const ExtrasResult({
-    required this.tip,
-    required this.delivery,
-    this.tipPercent,
+    required this.activeCategory,
+    required this.field,
+    required this.allFields,
   });
 
-  final double tip;
-  final double delivery;
+  final ExtrasCategory activeCategory;
+  final ExtrasField field;
+  final Map<ExtrasCategory, ExtrasField> allFields;
 
-  /// Tip as a % of the food subtotal (null = use the fixed [tip] amount).
-  final double? tipPercent;
+  bool get hasValue => field.hasValue;
+
+  @override
+  String toString() => 'ExtrasResult(active: $activeCategory, value: $field)';
 }
 
-/// Dialog with three fields: Tip (amount), Tip % (optional, of the food
-/// subtotal) and Delivery. Tip and Tip % are mutually exclusive — typing in
-/// one grays out the other. Returns [ExtrasResult] on save, null on cancel.
-Future<ExtrasResult?> showExtrasDialog(
-  BuildContext context, {
-  double initialTip = 0,
-  double initialDelivery = 0,
-  double? initialPercent,
-  double orderTotal = 0,
-}) async {
-  final t = Translate.instance;
-  final tipCtrl = TextEditingController(
-    text: initialTip > 0 ? initialTip.toStringAsFixed(0) : '',
-  );
-  final pctCtrl = TextEditingController(
-    text: (initialPercent ?? 0) > 0 ? initialPercent!.toStringAsFixed(0) : '',
-  );
-  final deliveryCtrl = TextEditingController(
-    text: initialDelivery > 0 ? initialDelivery.toStringAsFixed(0) : '',
-  );
-
-  ExtrasResult? result;
-  try {
-    result = await showDialog<ExtrasResult>(
-      context: context,
-      builder: (ctx) => _ExtrasDialogBody(
-        t: t,
-        tipCtrl: tipCtrl,
-        pctCtrl: pctCtrl,
-        deliveryCtrl: deliveryCtrl,
-        orderTotal: orderTotal,
-      ),
-    );
-  } finally {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      tipCtrl.dispose();
-      pctCtrl.dispose();
-      deliveryCtrl.dispose();
-    });
-  }
-  return result;
-}
-
-class _ExtrasDialogBody extends StatefulWidget {
-  const _ExtrasDialogBody({
-    required this.t,
-    required this.tipCtrl,
-    required this.pctCtrl,
-    required this.deliveryCtrl,
+/// Add-ons dialog: list of 4 sections (Service, Tax, Tip, Delivery)
+/// separated by dividers. All sections visible at once.
+class _ExtrasDialog extends StatefulWidget {
+  const _ExtrasDialog({
+    required this.context,
+    required this.initialTip,
+    required this.initialDelivery,
+    required this.initialTax,
+    required this.initialService,
     required this.orderTotal,
   });
 
-  final Translate t;
-  final TextEditingController tipCtrl;
-  final TextEditingController pctCtrl;
-  final TextEditingController deliveryCtrl;
+  final BuildContext context;
+  final ExtrasField initialTip;
+  final ExtrasField initialDelivery;
+  final ExtrasField initialTax;
+  final ExtrasField initialService;
   final double orderTotal;
 
   @override
-  State<_ExtrasDialogBody> createState() => _ExtrasDialogBodyState();
+  State<_ExtrasDialog> createState() => _ExtrasDialogState();
 }
 
-class _ExtrasDialogBodyState extends State<_ExtrasDialogBody> {
-  double? _previewTip;
-  bool _tipHasValue = false;
-  bool _pctHasValue = false;
-  double _delivery = 0;
+class _ExtrasDialogState extends State<_ExtrasDialog> {
+  late Map<ExtrasCategory, ExtrasField> fields;
 
-  /// Tip % scales from food + delivery.
-  double get _base => widget.orderTotal + _delivery;
+  TextEditingController _svcPctCtrl = TextEditingController();
+  TextEditingController _svcAmtCtrl = TextEditingController();
+  TextEditingController _taxPctCtrl = TextEditingController();
+  TextEditingController _taxAmtCtrl = TextEditingController();
+  TextEditingController _tipPctCtrl = TextEditingController();
+  TextEditingController _tipAmtCtrl = TextEditingController();
+  TextEditingController _deliveryCtrl = TextEditingController();
+
+  bool _deliveryCustom = false;
+
+  static const _deliverySuggestions = [15.0, 25.0, 40.0];
 
   @override
   void initState() {
     super.initState();
-    widget.tipCtrl.addListener(_refresh);
-    widget.pctCtrl.addListener(_refresh);
-    widget.deliveryCtrl.addListener(_refresh);
-    _refresh();
+    final svc = widget.initialService;
+    final tax = widget.initialTax;
+    var tip = widget.initialTip;
+    final delivery = widget.initialDelivery;
+
+    // Tip always defaults to percent mode.
+    if (!tip.usePercent && !tip.hasValue) {
+      tip = const ExtrasField(percent: 0, usePercent: true);
+    }
+
+    fields = {
+      ExtrasCategory.service: svc,
+      ExtrasCategory.tax: tax,
+      ExtrasCategory.tip: tip,
+      ExtrasCategory.delivery: delivery,
+    };
+
+    _svcPctCtrl = TextEditingController(
+      text: svc.usePercent && svc.percent != null ? svc.percent!.toStringAsFixed(0) : '',
+    );
+    _svcAmtCtrl = TextEditingController(
+      text: !svc.usePercent && svc.amount > 0 ? svc.amount.toStringAsFixed(0) : '',
+    );
+    _taxPctCtrl = TextEditingController(
+      text: tax.usePercent && tax.percent != null ? tax.percent!.toStringAsFixed(0) : '',
+    );
+    _taxAmtCtrl = TextEditingController(
+      text: !tax.usePercent && tax.amount > 0 ? tax.amount.toStringAsFixed(0) : '',
+    );
+    _tipPctCtrl = TextEditingController(
+      text: tip.usePercent && tip.percent != null ? tip.percent!.toStringAsFixed(0) : '',
+    );
+    _tipAmtCtrl = TextEditingController(
+      text: !tip.usePercent && tip.amount > 0 ? tip.amount.toStringAsFixed(0) : '',
+    );
+    _deliveryCtrl = TextEditingController(
+      text: delivery.amount > 0 ? delivery.amount.toStringAsFixed(0) : '',
+    );
+    _deliveryCustom = delivery.hasValue && !_deliverySuggestions.any((a) => a == delivery.amount);
   }
 
   @override
   void dispose() {
-    widget.tipCtrl.removeListener(_refresh);
-    widget.pctCtrl.removeListener(_refresh);
-    widget.deliveryCtrl.removeListener(_refresh);
+    _svcPctCtrl.dispose();
+    _svcAmtCtrl.dispose();
+    _taxPctCtrl.dispose();
+    _taxAmtCtrl.dispose();
+    _tipPctCtrl.dispose();
+    _tipAmtCtrl.dispose();
+    _deliveryCtrl.dispose();
     super.dispose();
   }
 
-  void _refresh() {
-    final tip = double.tryParse(
-      widget.tipCtrl.text.trim().replaceAll(',', '.'),
-    );
-    final pct = double.tryParse(
-      widget.pctCtrl.text.trim().replaceAll(',', '.'),
-    );
-    final delivery = double.tryParse(
-          widget.deliveryCtrl.text.trim().replaceAll(',', '.'),
-        ) ??
-        0;
-    // Compute from the live delivery value (not the cached _delivery, which
-    // is only updated inside setState) so the preview tracks every keystroke.
-    final base = widget.orderTotal + delivery;
-    final preview = (pct != null && pct > 0) ? base * pct / 100 : null;
-    setState(() {
-      _tipHasValue = tip != null && tip > 0;
-      _pctHasValue = pct != null && pct > 0;
-      _delivery = delivery;
-      _previewTip = preview;
-    });
+  // ── Service ──
+
+  void _onServicePctChanged(double pct) {
+    final v = pct.roundToDouble();
+    fields[ExtrasCategory.service] =
+        ExtrasField(percent: v, usePercent: true).copyWith(clearPercent: v <= 0);
+    _svcPctCtrl.text = v > 0 ? v.toStringAsFixed(0) : '';
+    setState(() {});
   }
+
+  void _onServiceAmtChanged(String text) {
+    final amt = double.tryParse(text.trim().replaceAll(',', '.')) ?? 0;
+    fields[ExtrasCategory.service] = ExtrasField(amount: amt, usePercent: false);
+    setState(() {});
+  }
+
+  void _toggleServiceMode() {
+    final f = fields[ExtrasCategory.service]!;
+    if (f.usePercent) {
+      final amt = (f.percent ?? 0) * widget.orderTotal / 100;
+      fields[ExtrasCategory.service] = ExtrasField(amount: amt, usePercent: false);
+      _svcAmtCtrl.text = amt > 0 ? amt.toStringAsFixed(0) : '';
+      _svcPctCtrl.text = '';
+    } else {
+      final pct = f.amount > 0 && widget.orderTotal > 0
+          ? (f.amount / widget.orderTotal * 100).roundToDouble()
+          : 0.0;
+      fields[ExtrasCategory.service] =
+          ExtrasField(percent: pct, usePercent: true).copyWith(clearPercent: pct <= 0);
+      _svcPctCtrl.text = pct > 0 ? pct.toStringAsFixed(0) : '';
+      _svcAmtCtrl.text = '';
+    }
+    setState(() {});
+  }
+
+  // ── Tax ──
+
+  void _onTaxPctChanged(double pct) {
+    final v = pct.roundToDouble();
+    fields[ExtrasCategory.tax] =
+        ExtrasField(percent: v, usePercent: true).copyWith(clearPercent: v <= 0);
+    _taxPctCtrl.text = v > 0 ? v.toStringAsFixed(0) : '';
+    setState(() {});
+  }
+
+  void _onTaxAmtChanged(String text) {
+    final amt = double.tryParse(text.trim().replaceAll(',', '.')) ?? 0;
+    fields[ExtrasCategory.tax] = ExtrasField(amount: amt, usePercent: false);
+    setState(() {});
+  }
+
+  void _toggleTaxMode() {
+    final f = fields[ExtrasCategory.tax]!;
+    if (f.usePercent) {
+      final amt = (f.percent ?? 0) * widget.orderTotal / 100;
+      fields[ExtrasCategory.tax] = ExtrasField(amount: amt, usePercent: false);
+      _taxAmtCtrl.text = amt > 0 ? amt.toStringAsFixed(0) : '';
+      _taxPctCtrl.text = '';
+    } else {
+      final pct = f.amount > 0 && widget.orderTotal > 0
+          ? (f.amount / widget.orderTotal * 100).roundToDouble()
+          : 0.0;
+      fields[ExtrasCategory.tax] =
+          ExtrasField(percent: pct, usePercent: true).copyWith(clearPercent: pct <= 0);
+      _taxPctCtrl.text = pct > 0 ? pct.toStringAsFixed(0) : '';
+      _taxAmtCtrl.text = '';
+    }
+    setState(() {});
+  }
+
+  // ── Tip ──
+
+  void _onTipPctChanged(double pct) {
+    final v = pct.roundToDouble();
+    final calculated = widget.orderTotal * v / 100;
+    fields[ExtrasCategory.tip] = ExtrasField(
+      amount: calculated,
+      percent: v,
+      usePercent: true,
+    ).copyWith(clearPercent: v <= 0);
+    _tipPctCtrl.text = v > 0 ? v.toStringAsFixed(0) : '';
+    setState(() {});
+  }
+
+  void _onTipAmtChanged(String text) {
+    final amt = double.tryParse(text.trim().replaceAll(',', '.')) ?? 0;
+    fields[ExtrasCategory.tip] = ExtrasField(amount: amt, usePercent: false);
+    setState(() {});
+  }
+
+  void _toggleTipMode() {
+    final f = fields[ExtrasCategory.tip]!;
+    if (f.usePercent) {
+      final amt = (f.percent ?? 0) * widget.orderTotal / 100;
+      fields[ExtrasCategory.tip] = ExtrasField(amount: amt, usePercent: false);
+      _tipAmtCtrl.text = amt > 0 ? amt.toStringAsFixed(0) : '';
+      _tipPctCtrl.text = '';
+    } else {
+      final pct = f.amount > 0 && widget.orderTotal > 0
+          ? (f.amount / widget.orderTotal * 100).roundToDouble()
+          : 0.0;
+      final calculated = widget.orderTotal * pct / 100;
+      fields[ExtrasCategory.tip] = ExtrasField(amount: calculated, percent: pct, usePercent: true)
+          .copyWith(clearPercent: pct <= 0);
+      _tipPctCtrl.text = pct > 0 ? pct.toStringAsFixed(0) : '';
+      _tipAmtCtrl.text = '';
+    }
+    setState(() {});
+  }
+
+  // ── Delivery ──
+
+  void _applyDeliverySuggestion(double amt) {
+    final current = fields[ExtrasCategory.delivery]!;
+    if (!current.usePercent && current.amount == amt) {
+      fields[ExtrasCategory.delivery] = const ExtrasField();
+      _deliveryCtrl.text = '';
+      _deliveryCustom = false;
+    } else {
+      fields[ExtrasCategory.delivery] = ExtrasField(amount: amt, usePercent: false);
+      _deliveryCtrl.text = amt.toStringAsFixed(0);
+      _deliveryCustom = false;
+    }
+    setState(() {});
+  }
+
+  void _onDeliveryCustomChanged(String text) {
+    final amt = double.tryParse(text.trim().replaceAll(',', '.')) ?? 0;
+    fields[ExtrasCategory.delivery] = ExtrasField(amount: amt, usePercent: false);
+    _deliveryCustom = text.isNotEmpty;
+    setState(() {});
+  }
+
+  // ── Save ──
+
+  void save() {
+    Navigator.pop(
+      widget.context,
+      ExtrasResult(
+        activeCategory: ExtrasCategory.service,
+        field: fields[ExtrasCategory.service]!,
+        allFields: Map.from(fields),
+      ),
+    );
+  }
+
+  // ── Helpers ──
+
+  IconData _icon(ExtrasCategory cat) => switch (cat) {
+        ExtrasCategory.service => Icons.handshake_rounded,
+        ExtrasCategory.tax => Icons.receipt_long_rounded,
+        ExtrasCategory.delivery => Icons.local_shipping_rounded,
+        ExtrasCategory.tip => Icons.attach_money_rounded,
+      };
+
+  String _label(ExtrasCategory cat) => switch (cat) {
+        ExtrasCategory.service => Translate.instance.serviceLabel,
+        ExtrasCategory.tax => Translate.instance.taxLabel,
+        ExtrasCategory.delivery => Translate.instance.deliveryLabel,
+        ExtrasCategory.tip => Translate.instance.tipLabel,
+      };
+
+  String _preview(ExtrasCategory cat) {
+    final t = Translate.instance;
+    final f = fields[cat]!;
+    if (!f.usePercent || f.percent == null || f.percent! <= 0) return '';
+    final calc = widget.orderTotal * f.percent! / 100;
+    return cat == ExtrasCategory.service
+        ? t.serviceApprox(calc)
+        : cat == ExtrasCategory.tax
+            ? t.taxApprox(calc)
+            : t.tipApprox(calc);
+  }
+
+  // ── Build ──
 
   @override
   Widget build(BuildContext context) {
-    final t = widget.t;
-    final preview = _previewTip;
+    final t = Translate.instance;
+    final scheme = Theme.of(context).colorScheme;
+    final radius = BorderRadius.circular(AppTheme.radiusCard);
+
     return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-      ),
-      title: Text(t.extrasSectionTitle),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Delivery first — it adds to the bill the tip % scales from.
-          TextField(
-            controller: widget.deliveryCtrl,
-            autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+      shape: RoundedRectangleBorder(borderRadius: radius),
+      title: Text(t.extrasDialogTitle),
+      content: SizedBox(
+        width: 340,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildServiceSection(scheme, t),
+              Divider(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+              _buildTaxSection(scheme, t),
+              Divider(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+              _buildTipSection(scheme, t),
+              Divider(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+              _buildDeliverySection(scheme, t),
             ],
-            decoration: InputDecoration(
-              labelText: t.deliveryLabel,
-              hintText: t.deliveryHint,
-              suffixText: t.currencySuffix,
-            ),
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: widget.tipCtrl,
-            enabled: !_pctHasValue,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-            ],
-            decoration: InputDecoration(
-              labelText: t.tipLabel,
-              hintText: t.tipHint,
-              suffixText: t.currencySuffix,
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: widget.pctCtrl,
-            enabled: !_tipHasValue,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-            ],
-            decoration: InputDecoration(
-              labelText: t.tipPercentLabel,
-              hintText: t.tipPercentHint,
-              suffixText: '%',
-              helperText:
-                  preview != null ? t.tipApprox(preview) : t.tipPercentOrBody,
-              helperMaxLines: 2,
-            ),
-          ),
-          const SizedBox(height: 6),
-          // Show the total (food + delivery) the % is calculated from.
-          Text(
-            '${t.foodSubtotalLabel}: ${t.money(_base)}',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-          ),
-        ],
+        ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(t.cancel),
-        ),
-        FilledButton(
-          onPressed: () {
-            final pct = double.tryParse(
-              widget.pctCtrl.text.trim().replaceAll(',', '.'),
-            );
-            final double tip;
-            final double? tipPercent;
-            if (pct != null && pct > 0) {
-              tipPercent = pct;
-              tip = _base * pct / 100;
-            } else {
-              tipPercent = null;
-              tip = double.tryParse(
-                    widget.tipCtrl.text.trim().replaceAll(',', '.'),
-                  ) ??
-                  0;
-            }
-            final delivery = double.tryParse(
-                  widget.deliveryCtrl.text.trim().replaceAll(',', '.'),
-                ) ??
-                0;
-            Navigator.pop(
-              context,
-              ExtrasResult(
-                  tip: tip, delivery: delivery, tipPercent: tipPercent),
-            );
-          },
-          child: Text(t.save),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: save,
+              child: Text(t.confirmAction),
+            ),
+          ),
         ),
       ],
     );
   }
+
+  // ── Section: Service ──
+
+  Widget _buildServiceSection(ColorScheme scheme, Translate t) {
+    final f = fields[ExtrasCategory.service]!;
+    final usePct = f.usePercent;
+    final pct = usePct ? (f.percent ?? 0) : 0.0;
+    final preview = _preview(ExtrasCategory.service);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _sectionHeader(ExtrasCategory.service, scheme),
+          const SizedBox(height: 8),
+          if (usePct) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Slider(
+                    value: pct.clamp(0.0, 25.0),
+                    min: 0,
+                    max: 25,
+                    divisions: 50,
+                    label: '${pct.round()}%',
+                    onChanged: _onServicePctChanged,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => _showPctInputDialog(ExtrasCategory.service, f),
+                  child: Container(
+                    width: 52,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${pct.round()}%',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 14, color: scheme.primary),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Opacity(
+              opacity: preview.isNotEmpty ? 1 : 0,
+              child: Text(preview.isNotEmpty ? preview : ' ',
+                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+            ),
+            const SizedBox(height: 4),
+            GestureDetector(
+              onTap: _toggleServiceMode,
+              child: Text(t.orEnterFixedAmount,
+                  style:
+                      TextStyle(fontSize: 12, color: scheme.primary, fontWeight: FontWeight.w600)),
+            ),
+          ] else ...[
+            TextField(
+              controller: _svcAmtCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+              decoration:
+                  InputDecoration(hintText: '0', suffixText: t.currencySuffix, isDense: true),
+              onChanged: _onServiceAmtChanged,
+            ),
+            const SizedBox(height: 4),
+            GestureDetector(
+              onTap: _toggleServiceMode,
+              child: Text(t.orEnterPercent,
+                  style:
+                      TextStyle(fontSize: 12, color: scheme.primary, fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ── Section: Tax ──
+
+  Widget _buildTaxSection(ColorScheme scheme, Translate t) {
+    final f = fields[ExtrasCategory.tax]!;
+    final usePct = f.usePercent;
+    final pct = usePct ? (f.percent ?? 0) : 0.0;
+    final preview = _preview(ExtrasCategory.tax);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _sectionHeader(ExtrasCategory.tax, scheme),
+          const SizedBox(height: 8),
+          if (usePct) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Slider(
+                    value: pct.clamp(0.0, 25.0),
+                    min: 0,
+                    max: 25,
+                    divisions: 50,
+                    label: '${pct.round()}%',
+                    onChanged: _onTaxPctChanged,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => _showPctInputDialog(ExtrasCategory.tax, f),
+                  child: Container(
+                    width: 52,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${pct.round()}%',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 14, color: scheme.primary),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Opacity(
+              opacity: preview.isNotEmpty ? 1 : 0,
+              child: Text(preview.isNotEmpty ? preview : ' ',
+                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+            ),
+            const SizedBox(height: 4),
+            GestureDetector(
+              onTap: _toggleTaxMode,
+              child: Text(t.orEnterFixedAmount,
+                  style:
+                      TextStyle(fontSize: 12, color: scheme.primary, fontWeight: FontWeight.w600)),
+            ),
+          ] else ...[
+            TextField(
+              controller: _taxAmtCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+              decoration:
+                  InputDecoration(hintText: '0', suffixText: t.currencySuffix, isDense: true),
+              onChanged: _onTaxAmtChanged,
+            ),
+            const SizedBox(height: 4),
+            GestureDetector(
+              onTap: _toggleTaxMode,
+              child: Text(t.orEnterPercent,
+                  style:
+                      TextStyle(fontSize: 12, color: scheme.primary, fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ── Section: Tip ──
+
+  Widget _buildTipSection(ColorScheme scheme, Translate t) {
+    final f = fields[ExtrasCategory.tip]!;
+    final usePct = f.usePercent;
+    final pct = usePct ? (f.percent ?? 0) : 0.0;
+    final tipValue =
+        usePct && f.percent != null && f.percent! > 0 ? widget.orderTotal * f.percent! / 100 : 0.0;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _sectionHeader(ExtrasCategory.tip, scheme),
+          const SizedBox(height: 8),
+          if (usePct) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Slider(
+                    value: pct.clamp(0.0, 25.0),
+                    min: 0,
+                    max: 25,
+                    divisions: 50,
+                    label: '${pct.round()}%',
+                    onChanged: _onTipPctChanged,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => _showPctInputDialog(ExtrasCategory.tip, f),
+                  child: Container(
+                    width: 52,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${pct.round()}%',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 14, color: scheme.primary),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Opacity(
+              opacity: 1,
+              child: Text(
+                t.tipApprox(tipValue),
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+              ),
+            ),
+            const SizedBox(height: 4),
+            GestureDetector(
+              onTap: _toggleTipMode,
+              child: Text(t.orEnterFixedAmount,
+                  style:
+                      TextStyle(fontSize: 12, color: scheme.primary, fontWeight: FontWeight.w600)),
+            ),
+          ] else ...[
+            TextField(
+              controller: _tipAmtCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+              decoration:
+                  InputDecoration(hintText: '0', suffixText: t.currencySuffix, isDense: true),
+              onChanged: _onTipAmtChanged,
+            ),
+            const SizedBox(height: 4),
+            GestureDetector(
+              onTap: _toggleTipMode,
+              child: Text(t.orEnterPercent,
+                  style:
+                      TextStyle(fontSize: 12, color: scheme.primary, fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ── Section: Delivery ──
+
+  Widget _buildDeliverySection(ColorScheme scheme, Translate t) {
+    final f = fields[ExtrasCategory.delivery]!;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _sectionHeader(ExtrasCategory.delivery, scheme),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (final amt in _deliverySuggestions) ...[
+                Expanded(
+                  child: _SuggestionChip(
+                    label: '${amt.toInt()}',
+                    selected: !f.usePercent && f.amount == amt,
+                    onTap: () => _applyDeliverySuggestion(amt),
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {},
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _deliveryCustom
+                          ? scheme.primary.withValues(alpha: 0.1)
+                          : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(AppValues.radiusChip),
+                      border: Border.all(
+                        color: _deliveryCustom
+                            ? scheme.primary
+                            : scheme.outlineVariant.withValues(alpha: 0.3),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _deliveryCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: _deliveryCustom ? scheme.primary : null),
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration(
+                        hintText: '···',
+                        hintStyle: TextStyle(color: scheme.onSurfaceVariant),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      onChanged: _onDeliveryCustomChanged,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Shared ──
+
+  Widget _sectionHeader(ExtrasCategory cat, ColorScheme scheme) {
+    final f = fields[cat]!;
+    final hasVal = f.hasValue;
+    return Row(
+      children: [
+        Icon(_icon(cat), size: 18, color: hasVal ? Colors.green : scheme.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Text(
+          _label(cat),
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+            color: hasVal ? Colors.green[700] : null,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showPctInputDialog(ExtrasCategory cat, ExtrasField field) {
+    final ctrl = TextEditingController(
+      text: (field.percent ?? 0).round().toString(),
+    );
+    final t = Translate.instance;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusCard)),
+        title: Text('${_label(cat)} %'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: false),
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: const InputDecoration(suffixText: '%'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t.cancel)),
+          FilledButton(
+            onPressed: () {
+              final v = double.tryParse(ctrl.text.trim()) ?? 0;
+              final pct = v.clamp(0.0, 25.0);
+              final calculated = widget.orderTotal * pct / 100;
+              fields[cat] = ExtrasField(amount: calculated, percent: pct, usePercent: true)
+                  .copyWith(clearPercent: pct <= 0);
+              if (cat == ExtrasCategory.service) {
+                _svcPctCtrl.text = pct > 0 ? pct.toStringAsFixed(0) : '';
+              } else if (cat == ExtrasCategory.tax) {
+                _taxPctCtrl.text = pct > 0 ? pct.toStringAsFixed(0) : '';
+              } else {
+                _tipPctCtrl.text = pct > 0 ? pct.toStringAsFixed(0) : '';
+              }
+              Navigator.pop(ctx);
+              setState(() {});
+            },
+            child: Text(t.save),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SuggestionChip extends StatelessWidget {
+  const _SuggestionChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? scheme.primary : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(AppValues.radiusChip),
+          border: Border.all(
+            color: selected ? scheme.primary : scheme.outlineVariant.withValues(alpha: 0.3),
+            width: 1.2,
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: selected ? scheme.onPrimary : null,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Shows the add-ons dialog and returns the [ExtrasResult] or null if cancelled.
+Future<ExtrasResult?> showExtrasDialog(
+  BuildContext context, {
+  ExtrasCategory initialCategory = ExtrasCategory.tip,
+  required ExtrasField initialTip,
+  required ExtrasField initialDelivery,
+  required ExtrasField initialTax,
+  required ExtrasField initialService,
+  double orderTotal = 0,
+}) async {
+  final result = await showDialog<ExtrasResult?>(
+    context: context,
+    builder: (ctx) => _ExtrasDialog(
+      context: ctx,
+      initialTip: initialTip,
+      initialDelivery: initialDelivery,
+      initialTax: initialTax,
+      initialService: initialService,
+      orderTotal: orderTotal,
+    ),
+  );
+  return result;
 }

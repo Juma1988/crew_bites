@@ -1,0 +1,87 @@
+{
+  // Make code look nice every time you save
+  "editor.formatOnSave": true,
+
+  // Two spaces instead of tabs
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+
+  // Remove extra spaces at the end of lines
+  "files.trimTrailingWhitespace": true,
+
+  // Add one empty line at the end of every file
+  "files.insertFinalNewline": true,
+
+  // Keep lines from getting too long
+  "dart.lineLength": 100,
+
+  // Hide the boring "build" folder from checks
+  "dart.analysisExcludedFolders": ["build"],
+
+  // Show code tips like function uses above the code
+  "editor.codeLens": true,
+
+  // Show a tiny map of your file on the side
+  "editor.minimap.enabled": false,
+
+  // Give each pair of brackets its own color
+  "editor.bracketPairColorization.enabled": true,
+  // "editor.guides.bracketPairs": true,
+
+  // Turn on widget hints for Flutter
+  "dart.flutterTrackWidgetCreation": true,
+
+  // Draw lines to show how widgets fit inside each other
+  "dart.previewFlutterUiGuides": true,
+
+  // Save file = hot reload in Flutter
+  "dart.flutterHotReloadOnSave": "all",
+
+  // Make text nice to read
+  "editor.fontSize": 14,
+  "editor.lineHeight": 22,
+  "editor.cursorSmoothCaretAnimation": "on",
+
+  // Pick a dark theme
+  "workbench.colorTheme": "Dark+",
+
+  // Show the file tree on the left
+  "workbench.sideBar.location": "left",
+
+  // Show the terminal at the bottom
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "always",
+    "source.organizeImports": "explicit"
+  },
+
+  "[dart]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "always"
+    },
+      "editor.inlayHints.enabled": "off"
+  },
+
+  "[yaml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2
+  },
+
+  // Spell checker: ignore project-specific words
+  "cSpell.words": [
+    "prefs",
+    "Prefs",
+    "Wemby",
+    "fars",
+    "debuggable",
+    "onboarding",
+    "prefsCorruptToast",
+    "friendIconStyle",
+    "friendIconMark",
+    "friendUsesEmoji"
+  ]
+
+}
+
+

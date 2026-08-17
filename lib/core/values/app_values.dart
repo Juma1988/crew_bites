@@ -43,7 +43,7 @@ abstract final class AppValues {
   // ── Brand ───────────────────────────────────────────────────────────
 
   static const String brandName = 'Crew Bites';
-  static const String appVersion = '1.0.5';
+  static const String appVersion = '1.0.7';
 
   // ── Layout / shape ──────────────────────────────────────────────────
 
@@ -116,9 +116,15 @@ abstract final class AppValues {
   static const String prefsHistory = 'history';
   static const String prefsCurrency = 'currency_code';
   static const String prefsFriendIconStyle = 'friend_icon_style';
-  static const String prefsExtrasSplit = 'extras_split_mode';
   static const String prefsRoundTotals = 'round_totals';
+  static const String prefsLastTip = 'last_tip';
+  static const String prefsLastTax = 'last_tax';
+  static const String prefsLastService = 'last_service';
   static const String prefsLastSeenChangelog = 'last_seen_changelog';
+
+  /// Show on every screen the dart file that owns it, plus a copy-to-clipboard
+  /// chip. Off by default — toggle from Settings > About.
+  static const String prefsDebugOverlay = 'debug_overlay_enabled';
 
   // ── Easter eggs ─────────────────────────────────────────────────────
   static const String prefsNeonUnlocked = 'easter_egg_neon_unlocked';

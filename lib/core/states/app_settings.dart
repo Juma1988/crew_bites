@@ -1,9 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../extras_split_mode.dart';
 import '../friend_icon_style.dart';
 import '../values/app_values.dart';
+import '../../models/order_models.dart';
 import 'crew_store.dart';
 
 /// App-wide settings: theme + language + prices + currency + coaches.
@@ -17,8 +19,8 @@ class AppSettings extends ChangeNotifier {
   static const _keyPrices = AppValues.prefsPrices;
   static const _keyCurrency = AppValues.prefsCurrency;
   static const _keyFriendIcons = AppValues.prefsFriendIconStyle;
-  static const _keyExtrasSplit = AppValues.prefsExtrasSplit;
   static const _keyRoundTotals = AppValues.prefsRoundTotals;
+  static const _keyDebugOverlay = AppValues.prefsDebugOverlay;
 
   ThemeMode themeMode = ThemeMode.system;
 
@@ -33,11 +35,21 @@ class AppSettings extends ChangeNotifier {
   /// How friends are marked on food rows, Home, history and share.
   FriendIconStyle friendIconStyle = FriendIconStyle.firstTwo;
 
-  /// How tip + delivery are shared among people.
-  ExtrasSplitMode extrasSplitMode = ExtrasSplitMode.even;
-
-  /// Round each person's share to whole units so the split sums exactly.
+  /// Round each person's grand total to whole units so the split sums exactly.
   bool roundTotals = false;
+
+  /// Show on every screen the dart file that owns it, plus a copy-to-clipboard
+  /// chip. Off by default — toggle from Settings > About.
+  bool debugOverlayEnabled = false;
+
+  // ── Last-used extras values (persisted per field) ──────────────────
+  ExtrasField _lastTip = const ExtrasField();
+  ExtrasField _lastTax = const ExtrasField(percent: 14, usePercent: true);
+  ExtrasField _lastService = const ExtrasField(percent: 12, usePercent: true);
+
+  ExtrasField get lastTip => _lastTip;
+  ExtrasField get lastTax => _lastTax;
+  ExtrasField get lastService => _lastService;
 
   /// Set when a prefs decode failed (UI can toast once).
   bool prefsLoadWarning = false;
@@ -75,14 +87,32 @@ class AppSettings extends ChangeNotifier {
           : AppValues.defaultCurrency;
       friendIconStyle =
           FriendIconStyle.fromKey(prefs.getString(_keyFriendIcons));
-      extrasSplitMode =
-          ExtrasSplitMode.fromKey(prefs.getString(_keyExtrasSplit));
       roundTotals = prefs.getBool(_keyRoundTotals) ?? false;
+      debugOverlayEnabled = prefs.getBool(_keyDebugOverlay) ?? false;
+
+      _lastTip = _loadExtrasField(prefs, AppValues.prefsLastTip) ??
+          const ExtrasField();
+      _lastTax = _loadExtrasField(prefs, AppValues.prefsLastTax) ??
+          const ExtrasField(percent: 14, usePercent: true);
+      _lastService = _loadExtrasField(prefs, AppValues.prefsLastService) ??
+          const ExtrasField(percent: 12, usePercent: true);
     } catch (_) {
       prefsLoadWarning = true;
     }
     _ready = true;
     notifyListeners();
+  }
+
+  ExtrasField? _loadExtrasField(SharedPreferences prefs, String key) {
+    final raw = prefs.getString(key);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      return ExtrasField.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _saveBool(String key, bool value) async {
@@ -169,18 +199,36 @@ class AppSettings extends ChangeNotifier {
     await _save(_keyFriendIcons, style.key);
   }
 
-  Future<void> setExtrasSplitMode(ExtrasSplitMode mode) async {
-    if (mode == extrasSplitMode) return;
-    extrasSplitMode = mode;
-    notifyListeners();
-    await _save(_keyExtrasSplit, mode.key);
-  }
-
   Future<void> setRoundTotals(bool value) async {
     if (value == roundTotals) return;
     roundTotals = value;
     notifyListeners();
     await _saveBool(_keyRoundTotals, value);
+  }
+
+  Future<void> setDebugOverlayEnabled(bool value) async {
+    if (value == debugOverlayEnabled) return;
+    debugOverlayEnabled = value;
+    notifyListeners();
+    await _saveBool(_keyDebugOverlay, value);
+  }
+
+  Future<void> setLastTip(ExtrasField field) async {
+    _lastTip = field;
+    notifyListeners();
+    await _save(AppValues.prefsLastTip, jsonEncode(field.toJson()));
+  }
+
+  Future<void> setLastTax(ExtrasField field) async {
+    _lastTax = field;
+    notifyListeners();
+    await _save(AppValues.prefsLastTax, jsonEncode(field.toJson()));
+  }
+
+  Future<void> setLastService(ExtrasField field) async {
+    _lastService = field;
+    notifyListeners();
+    await _save(AppValues.prefsLastService, jsonEncode(field.toJson()));
   }
 
   /// Clears user-added names (prefs + [CrewStore] memory/UI).

@@ -1,8 +1,9 @@
 import 'dart:convert';
 
 import '../core/values/app_values.dart';
+import 'order_models.dart';
 
-/// A short “hits” food list for a restaurant bundle (not a full menu).
+/// A short "hits" food list for a restaurant bundle (not a full menu).
 class RestaurantGroup {
   const RestaurantGroup({
     required this.id,
@@ -12,6 +13,9 @@ class RestaurantGroup {
     required this.colorValue,
     required this.items,
     this.itemPrices = const {},
+    this.defaultTax = const ExtrasField(),
+    this.defaultService = const ExtrasField(),
+    this.defaultDelivery = const ExtrasField(),
     this.isBuiltIn = false,
   });
 
@@ -26,6 +30,11 @@ class RestaurantGroup {
 
   /// Unit price per food title (lowercase keys). Persists with the bundle.
   final Map<String, double> itemPrices;
+
+  /// Default extras that auto-apply when this bundle is selected.
+  final ExtrasField defaultTax;
+  final ExtrasField defaultService;
+  final ExtrasField defaultDelivery;
 
   final bool isBuiltIn;
 
@@ -67,6 +76,9 @@ class RestaurantGroup {
     int? colorValue,
     List<String>? items,
     Map<String, double>? itemPrices,
+    ExtrasField? defaultTax,
+    ExtrasField? defaultService,
+    ExtrasField? defaultDelivery,
     bool? isBuiltIn,
   }) {
     return RestaurantGroup(
@@ -77,6 +89,9 @@ class RestaurantGroup {
       colorValue: colorValue ?? this.colorValue,
       items: items ?? this.items,
       itemPrices: itemPrices ?? this.itemPrices,
+      defaultTax: defaultTax ?? this.defaultTax,
+      defaultService: defaultService ?? this.defaultService,
+      defaultDelivery: defaultDelivery ?? this.defaultDelivery,
       isBuiltIn: isBuiltIn ?? this.isBuiltIn,
     );
   }
@@ -109,8 +124,26 @@ class RestaurantGroup {
         'color': colorValue,
         'items': items,
         if (itemPrices.isNotEmpty) 'itemPrices': itemPrices,
+        if (defaultTax.hasValue) 'defaultTax': _extrasToJson(defaultTax),
+        if (defaultService.hasValue) 'defaultService': _extrasToJson(defaultService),
+        if (defaultDelivery.hasValue) 'defaultDelivery': _extrasToJson(defaultDelivery),
         'isBuiltIn': isBuiltIn,
       };
+
+  static Map<String, dynamic> _extrasToJson(ExtrasField f) => {
+        'amount': f.amount,
+        if (f.percent != null) 'percent': f.percent,
+        'usePercent': f.usePercent,
+      };
+
+  static ExtrasField _extrasFromJson(Map<String, dynamic>? json) {
+    if (json == null) return const ExtrasField();
+    return ExtrasField(
+      amount: (json['amount'] as num?)?.toDouble() ?? 0,
+      percent: (json['percent'] as num?)?.toDouble(),
+      usePercent: json['usePercent'] as bool? ?? false,
+    );
+  }
 
   factory RestaurantGroup.fromJson(Map<String, dynamic> json) {
     final en = (json['nameEn'] as String?) ??
@@ -134,6 +167,9 @@ class RestaurantGroup {
           .map((e) => e.toString())
           .toList(),
       itemPrices: prices,
+      defaultTax: _extrasFromJson(json['defaultTax'] as Map<String, dynamic>?),
+      defaultService: _extrasFromJson(json['defaultService'] as Map<String, dynamic>?),
+      defaultDelivery: _extrasFromJson(json['defaultDelivery'] as Map<String, dynamic>?),
       isBuiltIn: json['isBuiltIn'] as bool? ?? false,
     );
   }

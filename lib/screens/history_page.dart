@@ -7,6 +7,7 @@ import '../core/states/order_store.dart';
 import '../core/theme.dart';
 import '../core/translate.dart';
 import '../core/values/app_values.dart';
+import '../core/debug/debug_registry.dart';
 import '../models/order_models.dart';
 import '../models/output_args.dart';
 import 'output_history_page.dart';
@@ -16,6 +17,7 @@ class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
 
   static const route = AppValues.routeHistory;
+  static const String debugSourceFile = 'lib/screens/history_page.dart';
 
   @override
   State<HistoryPage> createState() => _HistoryPageState();
@@ -66,6 +68,11 @@ class _HistoryPageState extends State<HistoryPage> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final strings = t;
+    if (AppSettings.instance.debugOverlayEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        DebugRegistry.currentFile.value = 'lib/screens/history_page.dart';
+      });
+    }
 
     return Scaffold(
       body: Stack(
@@ -161,7 +168,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );

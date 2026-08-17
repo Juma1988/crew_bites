@@ -9,6 +9,9 @@ import 'package:app_101/app.dart';
 import 'package:app_101/models/order_models.dart';
 import 'package:app_101/models/output_args.dart';
 import 'package:app_101/screens/output_history_page.dart';
+import 'package:app_101/widgets/summary_onboarding.dart';
+import 'package:app_101/widgets/orders_onboarding.dart';
+import 'package:app_101/widgets/onboarding_overlay.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +20,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await AppSettings.instance.load();
     await AppSettings.instance.setLocaleCode('ar');
+    await SummaryOnboarding.markDone();
+    await OrdersOnboarding.markDone();
+    await OnboardingOverlay.markDone();
   });
 
   testWidgets('adding a new bundle from the food page does not crash',
@@ -47,7 +53,8 @@ void main() {
     );
     expect(addIcon, findsWidgets);
     await tester.ensureVisible(addIcon);
-    await tester.tap(addIcon);
+    await tester.pumpAndSettle();
+    await tester.tap(addIcon, warnIfMissed: false);
     await tester.pumpAndSettle();
 
     expect(find.text('باقة جديدة'), findsWidgets);
@@ -88,7 +95,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.playlist_add_rounded));
+    await tester.ensureVisible(find.byIcon(Icons.playlist_add_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.playlist_add_rounded), warnIfMissed: false);
     await tester.pumpAndSettle();
 
     expect(find.text('سمّي الباقة'), findsWidgets);

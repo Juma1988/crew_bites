@@ -5,12 +5,14 @@ import '../core/states/app_settings.dart';
 import '../core/theme.dart';
 import '../core/translate.dart';
 import '../core/values/app_values.dart';
+import '../core/debug/debug_registry.dart';
 
 /// Versioned "What's new" page listing release notes, newest first.
 class ChangelogPage extends StatelessWidget {
   const ChangelogPage({super.key});
 
   static const route = AppValues.routeChangelog;
+  static const String debugSourceFile = 'lib/screens/changelog_page.dart';
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +20,11 @@ class ChangelogPage extends StatelessWidget {
     final scheme = theme.colorScheme;
     final t = Translate.instance;
     final isArabic = AppSettings.instance.isArabic;
+    if (AppSettings.instance.debugOverlayEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        DebugRegistry.currentFile.value = 'lib/screens/changelog_page.dart';
+      });
+    }
 
     return Scaffold(
       body: Stack(

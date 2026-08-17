@@ -25,6 +25,50 @@ class ChangelogEntry {
 abstract final class Changelog {
   static const List<ChangelogEntry> entries = [
     ChangelogEntry(
+      version: '1.0.7',
+      notesEn: [
+        'Redesigned Add-ons as a scrollable list — all 4 sections visible at once · K. Ali',
+        'Tip now uses a slider with %/fixed toggle, just like Service & Tax · K. Ali',
+        'Delivery: inline custom input replaces the 4th chip · K. Ali',
+        'Settings reorganized into grouped sections · K. Ali',
+        'Person card ⓘ shows a per-item extras breakdown · K. Ali',
+        'Add-ons (VAT, Service, Delivery) now carry over when switching bundles · K. Ali',
+        'Tip preview always visible · K. Ali',
+      ],
+      notesAr: [
+        'إعادة تصميم الإضافات كقائمة — كل الأقسام ظاهرة مرة واحدة · K. Ali',
+        'البقشيش: شريط تحكم مع تبديل نسبة/مبلغ، مثل الخدمة والضريبة · K. Ali',
+        'التوصيل: حقل إدخال مخصص بدل الشريحة الرابعة · K. Ali',
+        'الإعدادات: تنظيم في مجموعات · K. Ali',
+        'بطاقة الشخص ⓘ تعرض تفاصيل الإضافات · K. Ali',
+        'الإضافات (الضريبة، الخدمة، التوصيل) تنتقل مع تبديل البندل · K. Ali',
+        'معاينة البقشيش ظاهرة دائماً · K. Ali',
+      ],
+    ),
+    ChangelogEntry(
+      version: '1.0.6',
+      notesEn: [
+        'Fixed a crash when opening the add-ons dialog',
+        'Redesigned add-ons with a 2×2 grid layout and icons · K. Ali',
+        'Service & Tax now default to 12% and 14% — switch between % and fixed amount · K. Ali',
+        'Tip: quick-select chips for 5%, 10%, or 15% · K. Ali',
+        'Delivery: quick-select chips for 0, 15, or 25 · K. Ali',
+        'Tap any add-on to edit it directly — no extra icon needed · K. Ali',
+        'Add-ons (VAT, Service, Delivery) now save with your bundles · K. Ali',
+        'What\'s New moved to its own card at the bottom of Settings',
+      ],
+      notesAr: [
+        'إصلاح خطأ عند فتح شاشة الإضافات',
+        'تصميم جديد للإضافات: شبكة ٢×٢ بأيقونات · K. Ali',
+        'الخدمة والضريبة: ١٢٪ و ١٤٪ افتراضي — التبديل بين النسبة والمبلغ · K. Ali',
+        'البقشيش: أزرار سريعة (٥٪، ١٠٪، ١٥٪) · K. Ali',
+        'التوصيل: أزرار سريعة (٠، ١٥، ٢٥) · K. Ali',
+        'اضغط على أي إضافة لتعديلها مباشرة · K. Ali',
+        'الإضافات (الضريبة، الخدمة، التوصيل) تُحفظ مع البندل · K. Ali',
+        'نقل "ايه الجديد" لبطاقة منفصلة أسفل الإعدادات',
+      ],
+    ),
+    ChangelogEntry(
       version: '1.0.5',
       notesEn: [
         'Split tip & delivery: equal shares or by order value · K. Ali',

@@ -3,8 +3,65 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../core/extras_split_mode.dart';
 import '../core/values/app_values.dart';
+
+/// One of the four extras categories.
+enum ExtrasCategory {
+  tip,
+  delivery,
+  tax,
+  service,
+}
+
+/// One extras field (tip, delivery, tax, or service).
+/// Can be a fixed amount or a percentage of the food subtotal.
+class ExtrasField {
+  const ExtrasField({
+    this.amount = 0,
+    this.percent,
+    this.usePercent = false,
+  });
+
+  final double amount;
+  final double? percent;
+  final bool usePercent;
+
+  /// Effective amount given the food subtotal.
+  double effectiveAmount(double orderTotal) {
+    if (usePercent && percent != null && percent! > 0) {
+      return orderTotal * percent! / 100;
+    }
+    return amount;
+  }
+
+  bool get hasValue =>
+      (usePercent && percent != null && percent! > 0) || (!usePercent && amount > 0);
+
+  ExtrasField copyWith({
+    double? amount,
+    double? percent,
+    bool? usePercent,
+    bool clearPercent = false,
+  }) {
+    return ExtrasField(
+      amount: amount ?? this.amount,
+      percent: clearPercent ? null : (percent ?? this.percent),
+      usePercent: usePercent ?? this.usePercent,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'amount': amount,
+        if (percent != null) 'percent': percent,
+        'usePercent': usePercent,
+      };
+
+  factory ExtrasField.fromJson(Map<String, dynamic> json) => ExtrasField(
+        amount: (json['amount'] as num?)?.toDouble() ?? 0,
+        percent: (json['percent'] as num?)?.toDouble(),
+        usePercent: json['usePercent'] as bool? ?? false,
+      );
+}
 
 /// One friend in the group — name + color + funny emoji avatar.
 class Person {
@@ -145,9 +202,10 @@ class OrderSession {
     this.groupId,
     this.groupName,
     this.foodPrices = const {},
-    this.tipAmount = 0,
-    this.tipPercent,
-    this.deliveryFee = 0,
+    this.tip = const ExtrasField(),
+    this.delivery = const ExtrasField(),
+    this.tax = const ExtrasField(percent: 14, usePercent: true),
+    this.service = const ExtrasField(percent: 12, usePercent: true),
   });
 
   final String id;
@@ -165,34 +223,43 @@ class OrderSession {
   /// Unit price per food title (lowercased key). Used for menu + new lines.
   final Map<String, double> foodPrices;
 
-  /// Optional tip for whole order (offline one-phone mode).
-  final double tipAmount;
+  /// Tip field (fixed amount or % of food subtotal). Split evenly.
+  final ExtrasField tip;
 
-  /// Tip as a % of the food subtotal (optional). When set, it wins over
-  /// [tipAmount] and recomputes live as foods change.
-  final double? tipPercent;
+  /// Delivery fee (always fixed). Split evenly.
+  final ExtrasField delivery;
 
-  /// Optional delivery fee for whole order.
-  final double deliveryFee;
+  /// Tax (default 14%). Split by order value.
+  final ExtrasField tax;
 
-  /// The tip actually applied: % of food subtotal when [tipPercent] is
-  /// set, otherwise the fixed [tipAmount].
-  double get effectiveTip {
-    if (tipPercent != null && tipPercent! > 0) {
-      return orderTotal * tipPercent! / 100;
-    }
-    return tipAmount;
-  }
+  /// Service charge (default 12%). Split by order value.
+  final ExtrasField service;
 
   bool get isEmpty => people.isEmpty && lines.isEmpty;
   bool get hasContent => people.isNotEmpty || lines.isNotEmpty;
   int get itemCount => lines.fold(0, (sum, l) => sum + l.qty);
 
-  /// Food subtotal only (no tip / delivery).
+  /// Food subtotal only (no extras).
   double get orderTotal => lines.fold(0.0, (sum, l) => sum + l.lineTotal);
 
-  /// Food + tip + delivery.
-  double get grandTotal => orderTotal + effectiveTip + deliveryFee;
+  /// Effective tip amount.
+  double get effectiveTip => tip.effectiveAmount(orderTotal);
+
+  /// Effective delivery amount.
+  double get effectiveDelivery => delivery.effectiveAmount(orderTotal);
+
+  /// Effective tax amount.
+  double get effectiveTax => tax.effectiveAmount(orderTotal);
+
+  /// Effective service amount.
+  double get effectiveService => service.effectiveAmount(orderTotal);
+
+  /// Sum of all extras (tip + delivery + tax + service).
+  double get totalExtras =>
+      effectiveTip + effectiveDelivery + effectiveTax + effectiveService;
+
+  /// Food + all extras.
+  double get grandTotal => orderTotal + totalExtras;
 
   bool get hasPlace =>
       groupId != null &&
@@ -211,70 +278,78 @@ class OrderSession {
   List<Person> get peopleWithOrders =>
       people.where((p) => linesFor(p.id).isNotEmpty).toList();
 
-  /// Share of tip+delivery for [personId].
-  /// [even] splits equally among all people on the order.
-  /// [byValue] splits proportionally to each person's food total;
-  /// people with no food pay 0, and it falls back to even when the
-  /// order has no priced food.
-  double personExtrasShare(
-    String personId, {
-    ExtrasSplitMode mode = ExtrasSplitMode.even,
-  }) {
-    final extras = effectiveTip + deliveryFee;
-    if (extras <= 0) return 0;
-    if (people.isEmpty) return 0;
-    if (!people.any((p) => p.id == personId)) return 0;
-    if (mode == ExtrasSplitMode.byValue) {
-      final food = orderTotal;
-      final mine = personTotal(personId);
-      if (food > 0 && mine > 0) return extras * mine / food;
-      if (food <= 0) return extras / people.length;
-      return 0;
-    }
-    return extras / people.length;
+  /// Even share of an amount among all people.
+  double _evenShare(double amount) {
+    if (amount <= 0 || people.isEmpty) return 0;
+    return amount / people.length;
   }
 
-  /// Food + tip/delivery share for one person.
-  double personGrandTotal(
-    String personId, {
-    ExtrasSplitMode mode = ExtrasSplitMode.even,
-  }) =>
-      personTotal(personId) + personExtrasShare(personId, mode: mode);
+  /// By-value share of an amount for [personId].
+  double _byValueShare(double amount, String personId) {
+    if (amount <= 0) return 0;
+    if (!people.any((p) => p.id == personId)) return 0;
+    final food = orderTotal;
+    final mine = personTotal(personId);
+    if (food > 0 && mine > 0) return amount * mine / food;
+    if (food <= 0) return amount / people.length;
+    return 0;
+  }
 
-  /// Share of tip+delivery for [personId], rounded to a whole unit when
-  /// [round] is true (largest-remainder: all shares sum to the extras).
+  /// Tip share for [personId] (split evenly).
+  double personTipShare(String personId) =>
+      _evenShare(effectiveTip);
+
+  /// Delivery share for [personId] (split evenly).
+  double personDeliveryShare(String personId) =>
+      _evenShare(effectiveDelivery);
+
+  /// Tax share for [personId] (split by order value).
+  double personTaxShare(String personId) =>
+      _byValueShare(effectiveTax, personId);
+
+  /// Service share for [personId] (split by order value).
+  double personServiceShare(String personId) =>
+      _byValueShare(effectiveService, personId);
+
+  /// Total extras share for [personId] (sum of all four field shares).
+  double personExtrasShare(String personId) =>
+      personTipShare(personId) +
+      personDeliveryShare(personId) +
+      personTaxShare(personId) +
+      personServiceShare(personId);
+
+  /// Food + all extras shares for one person.
+  double personGrandTotal(String personId) =>
+      personTotal(personId) + personExtrasShare(personId);
+
+  /// Extras share for [personId], with grand-total rounding applied.
   double personExtrasShareFor(
     String personId, {
-    required ExtrasSplitMode mode,
     required bool round,
   }) {
-    if (!round) return personExtrasShare(personId, mode: mode);
-    return roundedExtrasShares(mode: mode)[personId] ?? 0;
+    if (!round) return personExtrasShare(personId);
+    return roundedGrandTotals()[personId] ?? personExtrasShare(personId);
   }
 
-  /// Grand total for [personId], with the extras share rounded to a whole
-  /// unit when [round] is true. Rounded grand totals sum to [grandTotal].
+  /// Grand total for [personId], rounded to a whole unit when [round] is true.
+  /// Rounded grand totals sum to [grandTotal].
   double personGrandTotalFor(
     String personId, {
-    required ExtrasSplitMode mode,
     required bool round,
   }) {
-    if (!round) return personGrandTotal(personId, mode: mode);
-    return personTotal(personId) +
-        (roundedExtrasShares(mode: mode)[personId] ?? 0);
+    if (!round) return personGrandTotal(personId);
+    return roundedGrandTotals()[personId] ?? personGrandTotal(personId);
   }
 
-  /// Whole-number extras shares that sum exactly to tip+delivery, using
-  /// largest-remainder (Hamilton) rounding. People owed 0 are excluded.
-  Map<String, double> roundedExtrasShares({
-    ExtrasSplitMode mode = ExtrasSplitMode.even,
-  }) {
-    final extras = effectiveTip + deliveryFee;
-    if (extras <= 0) return {};
+  /// Whole-number grand totals that sum exactly to [grandTotal], using
+  /// largest-remainder (Hamilton) rounding.
+  Map<String, double> roundedGrandTotals() {
+    final grand = grandTotal;
+    if (grand <= 0) return {};
     final raw = <String, double>{};
     for (final p in people) {
-      final share = personExtrasShare(p.id, mode: mode);
-      if (share > 0) raw[p.id] = share;
+      final total = personGrandTotal(p.id);
+      if (total > 0) raw[p.id] = total;
     }
     if (raw.isEmpty) return {};
 
@@ -286,7 +361,7 @@ class OrderSession {
       floorSum += floor;
     }
 
-    var diff = (extras - floorSum).round();
+    var diff = (grand - floorSum).round();
     if (diff != 0) {
       final order = raw.entries.toList()
         ..sort((a, b) => (b.value - b.value.floorToDouble())
@@ -341,11 +416,11 @@ class OrderSession {
     String? groupId,
     String? groupName,
     Map<String, double>? foodPrices,
-    double? tipAmount,
-    double? tipPercent,
-    double? deliveryFee,
+    ExtrasField? tip,
+    ExtrasField? delivery,
+    ExtrasField? tax,
+    ExtrasField? service,
     bool clearGroup = false,
-    bool clearTipPercent = false,
   }) {
     return OrderSession(
       id: id ?? this.id,
@@ -356,9 +431,10 @@ class OrderSession {
       groupId: clearGroup ? null : (groupId ?? this.groupId),
       groupName: clearGroup ? null : (groupName ?? this.groupName),
       foodPrices: foodPrices ?? this.foodPrices,
-      tipAmount: tipAmount ?? this.tipAmount,
-      tipPercent: clearTipPercent ? null : (tipPercent ?? this.tipPercent),
-      deliveryFee: deliveryFee ?? this.deliveryFee,
+      tip: tip ?? this.tip,
+      delivery: delivery ?? this.delivery,
+      tax: tax ?? this.tax,
+      service: service ?? this.service,
     );
   }
 
@@ -371,9 +447,10 @@ class OrderSession {
         groupId: groupId,
         groupName: groupName,
         foodPrices: Map<String, double>.from(foodPrices),
-        tipAmount: tipAmount,
-        tipPercent: tipPercent,
-        deliveryFee: deliveryFee,
+        tip: tip,
+        delivery: delivery,
+        tax: tax,
+        service: service,
       );
 
   Map<String, dynamic> toJson() => {
@@ -385,9 +462,10 @@ class OrderSession {
         if (groupId != null) 'groupId': groupId,
         if (groupName != null) 'groupName': groupName,
         if (foodPrices.isNotEmpty) 'foodPrices': foodPrices,
-        if (tipAmount > 0) 'tipAmount': tipAmount,
-        if (tipPercent != null && tipPercent! > 0) 'tipPercent': tipPercent,
-        if (deliveryFee > 0) 'deliveryFee': deliveryFee,
+        'tip': tip.toJson(),
+        'delivery': delivery.toJson(),
+        'tax': tax.toJson(),
+        'service': service.toJson(),
       };
 
   String encode() => jsonEncode(toJson());
@@ -400,6 +478,31 @@ class OrderSession {
         prices[k.toString().toLowerCase()] = (v as num).toDouble();
       });
     }
+
+    // Backward compat: old format had flat tipAmount/tipPercent/deliveryFee.
+    ExtrasField tip;
+    ExtrasField delivery;
+    ExtrasField tax;
+    ExtrasField service;
+    if (json.containsKey('tip') && json['tip'] is Map) {
+      tip = ExtrasField.fromJson(json['tip'] as Map<String, dynamic>);
+      delivery = ExtrasField.fromJson(json['delivery'] as Map<String, dynamic>);
+      tax = ExtrasField.fromJson(json['tax'] as Map<String, dynamic>);
+      service = ExtrasField.fromJson(json['service'] as Map<String, dynamic>);
+    } else {
+      final oldTipAmount = (json['tipAmount'] as num?)?.toDouble() ?? 0;
+      final oldTipPercent = (json['tipPercent'] as num?)?.toDouble();
+      final oldDelivery = (json['deliveryFee'] as num?)?.toDouble() ?? 0;
+      tip = ExtrasField(
+        amount: oldTipAmount,
+        percent: oldTipPercent,
+        usePercent: oldTipPercent != null && oldTipPercent > 0,
+      );
+      delivery = ExtrasField(amount: oldDelivery);
+      tax = const ExtrasField(percent: 14, usePercent: true);
+      service = const ExtrasField(percent: 12, usePercent: true);
+    }
+
     return OrderSession(
       id: json['id'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
@@ -415,9 +518,10 @@ class OrderSession {
       groupId: json['groupId'] as String?,
       groupName: json['groupName'] as String?,
       foodPrices: prices,
-      tipAmount: (json['tipAmount'] as num?)?.toDouble() ?? 0,
-      tipPercent: (json['tipPercent'] as num?)?.toDouble(),
-      deliveryFee: (json['deliveryFee'] as num?)?.toDouble() ?? 0,
+      tip: tip,
+      delivery: delivery,
+      tax: tax,
+      service: service,
     );
   }
 

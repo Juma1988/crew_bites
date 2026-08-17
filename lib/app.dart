@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_navigator.dart';
+import '../core/debug/debug_overlay.dart';
 import '../core/locales.dart';
 import '../core/routes.dart';
 import '../core/states/app_settings.dart';
@@ -30,7 +31,10 @@ class App101 extends StatelessWidget {
           builder: (context, child) {
             return Directionality(
               textDirection: settings.textDirection,
-              child: child ?? const SizedBox.shrink(),
+              child: DebugOverlay(
+                enabled: settings.debugOverlayEnabled,
+                child: child ?? const SizedBox.shrink(),
+              ),
             );
           },
           initialRoute: appInitialRoute,

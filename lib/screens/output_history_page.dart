@@ -5,7 +5,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/app_haptics.dart';
-import '../core/extras_split_mode.dart';
 import '../core/friend_icon_style.dart';
 import '../core/states/app_settings.dart';
 import '../core/states/bundles_store.dart';
@@ -14,6 +13,7 @@ import '../core/states/order_store.dart';
 import '../core/theme.dart';
 import '../core/translate.dart';
 import '../core/values/app_values.dart';
+import '../core/debug/debug_registry.dart';
 import '../models/order_models.dart';
 import '../models/output_args.dart';
 import '../models/restaurant_group.dart';
@@ -30,6 +30,7 @@ class OutputHistoryPage extends StatefulWidget {
   const OutputHistoryPage({super.key});
 
   static const route = '/output-history';
+  static const String debugSourceFile = 'lib/screens/output_history_page.dart';
 
   @override
   State<OutputHistoryPage> createState() => _OutputHistoryPageState();
@@ -121,17 +122,12 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     await OrderStore.pushHistory(session, history, _prefs);
   }
 
-  /// Split mode to apply: by-value only when prices are on, else even.
-  ExtrasSplitMode _splitMode(bool pricesOn) =>
-      pricesOn ? AppSettings.instance.extrasSplitMode : ExtrasSplitMode.even;
-
-  /// Round per-person shares to whole units when prices are on + setting.
+  /// Round per-person grand totals to whole units when prices are on + setting.
   bool _roundTotals(bool pricesOn) =>
       pricesOn && AppSettings.instance.roundTotals;
 
   String _formatSummary(OrderSession session) {
     final pricesOn = AppSettings.instance.pricesEnabled;
-    final splitMode = _splitMode(pricesOn);
     final roundTotals = _roundTotals(pricesOn);
     final buf = StringBuffer();
     buf.writeln(AppTheme.brandName);
@@ -151,7 +147,6 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
       }
       final total = session.personGrandTotalFor(
         p.id,
-        mode: splitMode,
         round: roundTotals,
       );
       if (pricesOn && total > 0) {
@@ -498,11 +493,16 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     final strings = t;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    if (AppSettings.instance.debugOverlayEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        DebugRegistry.currentFile.value = 'lib/screens/output_history_page.dart';
+      });
+    }
 
     return ListenableBuilder(
       listenable: AppSettings.instance,
       builder: (context, _) {
-        final pricesOn = AppSettings.instance.pricesEnabled;
+          final pricesOn = AppSettings.instance.pricesEnabled;
 
         if (!_ready) {
           return Scaffold(
@@ -679,48 +679,44 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.stretch,
                                                 children: [
-                                                  for (final (i, p)
-                                                      in orderedPeople
-                                                          .indexed) ...[
-                                                    _PersonBlock(
-                                                      person: p,
-                                                      index: i,
-                                                      lines: current
-                                                          .linesFor(p.id),
-                                                      emptyLabel:
-                                                          strings.emptyOrder,
-                                                      showPrices: pricesOn,
-                                                      extrasShare: pricesOn
-                                                          ? current
-                                                              .personExtrasShareFor(
-                                                              p.id,
-                                                              mode: _splitMode(
-                                                                pricesOn,
-                                                              ),
-                                                              round:
-                                                                  _roundTotals(
-                                                                pricesOn,
-                                                              ),
-                                                            )
-                                                          : 0,
-                                                      totalLabel: showMoney
-                                                          ? strings
-                                                              .personTotalLabel(
-                                                              current
-                                                                  .personGrandTotalFor(
-                                                                p.id,
-                                                                mode:
-                                                                    _splitMode(
-                                                                  pricesOn,
-                                                                ),
-                                                                round:
-                                                                    _roundTotals(
-                                                                  pricesOn,
-                                                                ),
-                                                              ),
-                                                            )
-                                                          : null,
-                                                    ),
+                                                   for (final (i, p)
+                                                       in orderedPeople
+                                                           .indexed) ...[
+                                                     _PersonBlock(
+                                                       person: p,
+                                                       index: i,
+                                                       lines: current
+                                                           .linesFor(p.id),
+                                                       emptyLabel:
+                                                           strings.emptyOrder,
+                                                       showPrices: pricesOn,
+                                                       extrasShare: pricesOn
+                                                           ? current
+                                                               .personExtrasShareFor(
+                                                               p.id,
+                                                               round:
+                                                                   _roundTotals(
+                                                                 pricesOn,
+                                                               ),
+                                                             )
+                                                           : 0,
+                                                       totalLabel: showMoney
+                                                           ? strings
+                                                               .personTotalLabel(
+                                                               current
+                                                                   .personGrandTotalFor(
+                                                                 p.id,
+                                                                 round:
+                                                                     _roundTotals(
+                                                                   pricesOn,
+                                                                 ),
+                                                               ),
+                                                             )
+                                                           : null,
+                                                       session: current,
+                                                       roundTotals:
+                                                           _roundTotals(pricesOn),
+                                                     ),
                                                     const SizedBox(height: 12),
                                                   ],
                                                 ],
@@ -798,7 +794,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                     ),
                   ),
                 ),
-              ],
+                             ],
             ),
           ),
         );
@@ -943,9 +939,11 @@ class _PersonBlock extends StatelessWidget {
     required this.index,
     required this.lines,
     required this.emptyLabel,
+    required this.session,
     this.showPrices = false,
     this.totalLabel,
     this.extrasShare = 0,
+    this.roundTotals = false,
   });
 
   final Person person;
@@ -954,8 +952,10 @@ class _PersonBlock extends StatelessWidget {
   final String emptyLabel;
   final bool showPrices;
   final String? totalLabel;
+  final OrderSession session;
+  final bool roundTotals;
 
-  /// Share of tip + delivery for this person (0 when none).
+  /// Share of all extras for this person (0 when none).
   final double extrasShare;
 
   @override
@@ -1056,35 +1056,107 @@ class _PersonBlock extends StatelessWidget {
             }),
           if (showPrices && extrasShare > 0) ...[
             const SizedBox(height: 6),
-            Row(
-              children: [
-                Text(
-                  t.extrasSectionTitle,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
+            GestureDetector(
+              onTap: () => _showExtrasInfo(context),
+              child: Row(
+                children: [
+                  Text(
                     t.extrasShareHint,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
-                ),
-                Text(
-                  t.formatAmount(extrasShare),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w800,
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 16,
                     color: scheme.primary,
+                  ),
+                  const Spacer(),
+                  Text(
+                    t.formatAmount(extrasShare),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: scheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showExtrasInfo(BuildContext context) {
+    final t = Translate.instance;
+    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final pId = person.id;
+    final tipShare = session.personTipShare(pId);
+    final deliveryShare = session.personDeliveryShare(pId);
+    final taxShare = session.personTaxShare(pId);
+    final serviceShare = session.personServiceShare(pId);
+
+    final items = <(IconData, String, String)>[];
+    if (tipShare > 0) items.add((Icons.attach_money_rounded, t.tipLabel, t.formatAmount(tipShare)));
+    if (deliveryShare > 0) items.add((Icons.local_shipping_rounded, t.deliveryLabel, t.formatAmount(deliveryShare)));
+    if (taxShare > 0) items.add((Icons.receipt_long_rounded, t.taxLabel, t.formatAmount(taxShare)));
+    if (serviceShare > 0) items.add((Icons.handshake_rounded, t.serviceLabel, t.formatAmount(serviceShare)));
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 6),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.receipt_rounded, size: 16, color: scheme.onInverseSurface),
+                const SizedBox(width: 8),
+                Text(
+                  '${person.name} — ${t.extrasShareHint}',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: scheme.onInverseSurface,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            for (final (i, item) in items.indexed) ...[
+              Row(
+                children: [
+                  Icon(item.$1, size: 14, color: scheme.onInverseSurface.withValues(alpha: 0.7)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item.$2,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onInverseSurface.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    item.$3,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onInverseSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              if (i < items.length - 1) const SizedBox(height: 4),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

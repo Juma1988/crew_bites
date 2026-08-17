@@ -4,6 +4,7 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
 import '../core/app_haptics.dart';
+import '../core/debug/debug_registry.dart';
 import '../core/friend_icon_style.dart';
 import '../core/motion.dart';
 import '../core/states/app_settings.dart';
@@ -23,6 +24,9 @@ class AddUserPage extends StatefulWidget {
   const AddUserPage({super.key});
 
   static const route = AppValues.routeAddUser;
+
+  /// Debug overlay reads this to show + copy the file owning the page.
+  static const String debugSourceFile = 'lib/screens/add_user_page.dart';
 
   @override
   State<AddUserPage> createState() => _AddUserPageState();
@@ -364,6 +368,11 @@ class _AddUserPageState extends State<AddUserPage> {
     final strings = t;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    if (AppSettings.instance.debugOverlayEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        DebugRegistry.currentFile.value = 'lib/screens/add_user_page.dart';
+      });
+    }
 
     return ListenableBuilder(
       listenable: _crew,

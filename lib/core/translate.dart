@@ -317,6 +317,7 @@ class Translate {
   String get continueLabel => _tr('Continue', 'كمّل');
 
   String get save => _tr('Save', 'احفظ');
+  String get confirmAction => _tr('Confirm', 'تأكيد');
 
   String get personName => _tr('Name', 'الاسم');
 
@@ -398,23 +399,51 @@ class Translate {
 
   String get deliveryLabel => _tr('Delivery', 'توصيل');
 
+  String get taxLabel => _tr('Tax', 'ضريبة');
+
+  String get serviceLabel => _tr('Service', 'خدمة');
+
   String get tipHint => _tr('0 if none', '٠ لو مفيش');
 
   String get deliveryHint => _tr('0 if none', '٠ لو مفيش');
 
-  String get tipPercentLabel => _tr('Tip %', 'بقشيش %');
+  String get taxHint => _tr('0 if none', '٠ لو مفيش');
 
-  String get tipPercentHint => _tr('Optional', 'اختياري');
+  String get serviceHint => _tr('0 if none', '٠ لو مفيش');
+
+  String get percentHint => _tr('Optional', 'اختياري');
 
   String get tipPercentOrBody =>
       _tr('Or a percent of the food subtotal', 'أو نسبة من قيمة الأكل');
+
+  String get orEnterFixedAmount => _tr(
+        'Or enter fixed amount',
+        'أو ادخل مبلغ ثابت',
+      );
+
+  String get orEnterPercent => _tr(
+        'Or enter percentage',
+        'أو ادخل نسبة مئوية',
+      );
 
   String tipApprox(double amount) => _tr(
         'Tip ≈ ${money(amount)}',
         'البقشيش ≈ ${money(amount)}',
       );
 
-  String get extrasSectionTitle => _tr('Tip & delivery', 'بقشيش وتوصيل');
+  String taxApprox(double amount) => _tr(
+        'Tax ≈ ${money(amount)}',
+        'الضريبة ≈ ${money(amount)}',
+      );
+
+  String serviceApprox(double amount) => _tr(
+        'Service ≈ ${money(amount)}',
+        'الخدمة ≈ ${money(amount)}',
+      );
+
+  String get extrasDialogTitle => _tr('Add-ons', 'إضافات');
+
+  String get extrasSectionTitle => _tr('Add-ons', 'إضافات');
 
   String get extrasSectionSubtitle => _tr(
         'Optional. Split across people who ordered (by food total).',
@@ -427,31 +456,45 @@ class Translate {
       );
 
   String get extrasEmptyDialogTitle => _tr(
-        'No tip or delivery yet',
-        'مفيش بقشيش ولا توصيل',
+        'No add-ons yet',
+        'مفيش إضافات',
       );
 
   String get extrasEmptyDialogMessage => _tr(
-        'You didn\'t add a tip or delivery fee. Continue anyway?',
-        'مضفتش بقشيش أو توصيل. نكمل برضو؟',
+        'You didn\'t add any add-ons. Continue anyway?',
+        'مضفتش إضافات. نكمل برضو؟',
       );
 
   String get addNow => _tr('Add now', 'ضيف دلوقتي');
 
-  String get tipDeliveryDialogTitle => _tr('Tip & delivery?', 'بقشيش وتوصيل؟');
+  String get tipDeliveryDialogTitle => _tr('Add-ons?', 'إضافات؟');
 
   String get tipDeliveryDialogBody => _tr(
         'Optional before the summary. Leave empty or skip if none.',
-        'اختياري قبل الملخص. سيبه فاضي أو عدّي لو مفيش.',
+        'اختيائي قبل الملخص. سيبه فاضي أو عدّي لو مفيش.',
       );
 
   String get tipDeliverySkip => _tr('Skip', 'عدّي');
 
   String get tipDeliveryContinue => _tr('To summary', 'للملخص');
 
-  String get extrasTapToEdit => _tr('Tap to change', 'دوس عشان تعدّل');
+  String get extrasTapToEdit => _tr('Tap to edit add-ons', 'دوس عشان تعدّل');
 
   String get foodSubtotalLabel => _tr('Food', 'الأكل');
+
+  String get noFoodTitle => _tr(
+        'Some people didn\'t order',
+        'في ناس مش طلبوا',
+      );
+
+  String get noFoodBody => _tr(
+        'These people have no food on the order. Remove them and continue?',
+        'الناس دول معندهمش أكل في الطلب. نشيلهم ونكمل؟',
+      );
+
+  String get confirmRemove => _tr('Remove & continue', 'شيل وكمّل');
+
+  String get grandTotalBreakdown => _tr('Add-ons breakdown', 'تفاصيل الإضافات');
 
   String grandTotalLabel(double amount) =>
       _tr('Grand total ${money(amount)}', 'الإجمالي ${money(amount)}');
@@ -526,7 +569,7 @@ class Translate {
       };
 
   String get settingsExtrasSplit =>
-      _tr('Split tip & delivery', 'تقسيم البقشيش والتوصيل');
+      _tr('Split add-ons', 'تقسيم الإضافات');
 
   String get extrasSplitBody => _tr(
         'Split even gives everyone an equal share. By order value splits proportionally to each person\'s food total.',
@@ -673,6 +716,11 @@ class Translate {
       );
 
   String get whatsNewTitle => _tr("What's new", 'إيه الجديد');
+
+  String get viewFullChangelog => _tr(
+        'View full changelog',
+        'عرض كل التغييرات',
+      );
 
   String get gotIt => _tr('Got it', 'تمام');
 
@@ -878,5 +926,26 @@ class Translate {
   String get obBundleSaveBody => _tr(
         'Like this order? Save it as a bundle to load it instantly next time!',
         'عجبك الطلب؟ احفظه كباقة عشان تنزّله في ثانية المرة الجاية!',
+      );
+
+  // ── Debug overlay ─────────────────────────────────────────────────
+
+  String get debugOverlayTitle => _tr('Debug mode', 'وضع الديباغ');
+
+  String get debugOverlayHint => _tr(
+        'Show the dart file of each page on screen. Tap to copy the path.',
+        'اعرض ملف الدارت الخاص بكل صفحة. اضغط عشان تنسخ المسار.',
+      );
+
+  String get debugOverlayNoTag => _tr('No file tag', 'مفيش تاغ');
+
+  String get debugOverlayCopyTooltip => _tr(
+        'Tap to copy file path',
+        'اضغط عشان تنسخ مسار الملف',
+      );
+
+  String get debugOverlayCopiedToast => _tr(
+        'File path copied!',
+        'تم نسخ مسار الملف!',
       );
 }

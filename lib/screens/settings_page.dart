@@ -4,13 +4,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_haptics.dart';
-import '../core/extras_split_mode.dart';
+import '../core/changelog.dart';
 import '../core/friend_icon_style.dart';
 import '../core/legal_config.dart';
 import '../core/states/app_settings.dart';
 import '../core/theme.dart';
 import '../core/translate.dart';
 import '../core/values/app_values.dart';
+import '../core/debug/debug_registry.dart';
 import '../models/order_models.dart';
 import 'changelog_page.dart';
 import 'privacy_page.dart';
@@ -19,6 +20,7 @@ class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
   static const route = '/settings';
+  static const String debugSourceFile = 'lib/screens/settings_page.dart';
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -186,16 +188,21 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    if (AppSettings.instance.debugOverlayEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        DebugRegistry.currentFile.value = 'lib/screens/settings_page.dart';
+      });
+    }
 
     return ListenableBuilder(
       listenable: AppSettings.instance,
       builder: (context, _) {
-        final settings = AppSettings.instance;
-        final mode = settings.themeMode;
-        final localeCode = settings.localeCode;
-        final currency = settings.currencyCode;
+          final settings = AppSettings.instance;
+          final mode = settings.themeMode;
+          final localeCode = settings.localeCode;
+          final currency = settings.currencyCode;
 
-        return Scaffold(
+          return Scaffold(
           body: Stack(
             children: [
               Positioned.fill(
@@ -233,7 +240,9 @@ class _SettingsPageState extends State<SettingsPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 14),
+                    // ── Appearance ──
+                    _GroupLabel('Appearance'),
                     _CollapsibleCard(
                       sectionId: 'theme',
                       isExpanded: _expandedSection == 'theme',
@@ -362,62 +371,11 @@ class _SettingsPageState extends State<SettingsPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    _CollapsibleCard(
-                      sectionId: 'split',
-                      isExpanded: _expandedSection == 'split',
-                      onToggle: _onToggleSection,
-                      margin: const EdgeInsets.symmetric(horizontal: 12),
-                      icon: Icons.splitscreen_rounded,
-                      title: strings.settingsExtrasSplit,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            strings.extrasSplitBody,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              height: 1.4,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          SegmentedButton<ExtrasSplitMode>(
-                            segments: [
-                              ButtonSegment(
-                                value: ExtrasSplitMode.even,
-                                label: Text(strings.splitModeEven),
-                              ),
-                              ButtonSegment(
-                                value: ExtrasSplitMode.byValue,
-                                label: Text(strings.splitModeByValue),
-                              ),
-                            ],
-                            selected: {settings.extrasSplitMode},
-                            onSelectionChanged: (s) {
-                              AppHaptics.selectionClick();
-                              AppSettings.instance.setExtrasSplitMode(
-                                s.first,
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          Material(
-                            color: Colors.transparent,
-                            child: SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(strings.roundTotalsLabel),
-                              subtitle: Text(strings.roundTotalsBody),
-                              value: settings.roundTotals,
-                              onChanged: (v) {
-                                AppHaptics.selectionClick();
-                                AppSettings.instance.setRoundTotals(v);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
+
+                    const SizedBox(height: 20),
+                    // ── Help & Support ──
+                    Divider(indent: 16, endIndent: 16, color: scheme.outlineVariant.withValues(alpha: 0.4)),
+                    _GroupLabel('Help & Support'),
                     _CollapsibleCard(
                       sectionId: 'help',
                       isExpanded: _expandedSection == 'help',
@@ -553,6 +511,32 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     const SizedBox(height: 14),
                     _CollapsibleCard(
+                      sectionId: 'contact',
+                      isExpanded: _expandedSection == 'contact',
+                      onToggle: _onToggleSection,
+                      margin: const EdgeInsets.symmetric(horizontal: 12),
+                      icon: Icons.mail_outline_rounded,
+                      title: strings.contactSupport,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextButton.icon(
+                              onPressed: _emailSupport,
+                              onLongPress: _copySupportEmail,
+                              icon: const Icon(Icons.mail_outline_rounded),
+                              label: Text(strings.contactSupport),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _copySupportEmail,
+                            icon: const Icon(Icons.copy_rounded),
+                            tooltip: strings.copiedToast,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _CollapsibleCard(
                       sectionId: 'privacy',
                       isExpanded: _expandedSection == 'privacy',
                       onToggle: _onToggleSection,
@@ -581,33 +565,11 @@ class _SettingsPageState extends State<SettingsPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    _CollapsibleCard(
-                      sectionId: 'contact',
-                      isExpanded: _expandedSection == 'contact',
-                      onToggle: _onToggleSection,
-                      margin: const EdgeInsets.symmetric(horizontal: 12),
-                      icon: Icons.mail_outline_rounded,
-                      title: strings.contactSupport,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextButton.icon(
-                              onPressed: _emailSupport,
-                              onLongPress: _copySupportEmail,
-                              icon: const Icon(Icons.mail_outline_rounded),
-                              label: Text(strings.contactSupport),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: _copySupportEmail,
-                            icon: const Icon(Icons.copy_rounded),
-                            tooltip: strings.copiedToast,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
+
+                    const SizedBox(height: 20),
+                    // ── About ──
+                    Divider(indent: 16, endIndent: 16, color: scheme.outlineVariant.withValues(alpha: 0.4)),
+                    _GroupLabel('About'),
                     _CollapsibleCard(
                       sectionId: 'about',
                       isExpanded: _expandedSection == 'about',
@@ -668,29 +630,28 @@ class _SettingsPageState extends State<SettingsPage> {
                           const SizedBox(height: 14),
                           Material(
                             color: Colors.transparent,
-                            child: ListTile(
+                            child: SwitchListTile(
                               contentPadding: EdgeInsets.zero,
-                              leading: Icon(
-                                Icons.new_releases_rounded,
+                              secondary: Icon(
+                                Icons.bug_report_rounded,
                                 color: scheme.primary,
                               ),
                               title: Text(
-                                strings.whatsNewTitle,
+                                strings.debugOverlayTitle,
                                 style: theme.textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              subtitle: Text('v${AppValues.appVersion}'),
-                              trailing: Icon(
-                                Icons.chevron_right_rounded,
-                                color: scheme.onSurfaceVariant,
+                              subtitle: Text(
+                                strings.debugOverlayHint,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
                               ),
-                              onTap: () {
+                              value: settings.debugOverlayEnabled,
+                              onChanged: (v) {
                                 AppHaptics.selectionClick();
-                                Navigator.pushNamed(
-                                  context,
-                                  ChangelogPage.route,
-                                );
+                                AppSettings.instance.setDebugOverlayEnabled(v);
                               },
                             ),
                           ),
@@ -699,6 +660,55 @@ class _SettingsPageState extends State<SettingsPage> {
                             onPressed: _clearCustom,
                             icon: const Icon(Icons.person_off_outlined),
                             label: Text(strings.clearCustomRoster),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _CollapsibleCard(
+                      sectionId: 'whatsNew',
+                      isExpanded: _expandedSection == 'whatsNew',
+                      onToggle: _onToggleSection,
+                      margin: const EdgeInsets.symmetric(horizontal: 12),
+                      icon: Icons.new_releases_rounded,
+                      title: strings.whatsNewTitle,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'v${AppValues.appVersion}',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: scheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          for (final note in Changelog.entryFor(AppValues.appVersion)?.notes(AppSettings.instance.isArabic) ?? [])
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('•  ', style: theme.textTheme.bodyMedium),
+                                  Expanded(
+                                    child: Text(
+                                      note,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              AppHaptics.selectionClick();
+                              Navigator.pushNamed(context, ChangelogPage.route);
+                            },
+                            icon: const Icon(Icons.history_rounded),
+                            label: Text(strings.viewFullChangelog),
                           ),
                         ],
                       ),
@@ -725,6 +735,27 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         );
       },
+    );
+  }
+}
+
+class _GroupLabel extends StatelessWidget {
+  const _GroupLabel(this.label);
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, bottom: 8),
+      child: Text(
+        label.toUpperCase(),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: scheme.onSurfaceVariant,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.2,
+        ),
+      ),
     );
   }
 }

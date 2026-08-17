@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/app_haptics.dart';
+import '../core/debug/debug_registry.dart';
 import '../core/friend_icon_style.dart';
 import '../core/states/app_settings.dart';
 import '../core/states/order_store.dart';
@@ -22,6 +23,9 @@ class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   static const route = '/';
+
+  /// Debug overlay reads this to show + copy the file owning the page.
+  static const String debugSourceFile = 'lib/screens/homepage.dart';
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -124,6 +128,11 @@ class _HomePageState extends State<HomePage>
     final strings = t;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    if (AppSettings.instance.debugOverlayEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        DebugRegistry.currentFile.value = 'lib/screens/homepage.dart';
+      });
+    }
 
     if (!_ready) {
       return Scaffold(

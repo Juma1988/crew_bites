@@ -17,6 +17,9 @@ import 'package:app_101/screens/add_orders_page.dart';
 import 'package:app_101/screens/add_user_page.dart';
 import 'package:app_101/screens/output_history_page.dart';
 import 'package:app_101/screens/settings_page.dart';
+import 'package:app_101/widgets/summary_onboarding.dart';
+import 'package:app_101/widgets/orders_onboarding.dart';
+import 'package:app_101/widgets/onboarding_overlay.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +28,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await AppSettings.instance.load();
     await AppSettings.instance.setLocaleCode('ar');
+    await SummaryOnboarding.markDone();
+    await OrdersOnboarding.markDone();
+    await OnboardingOverlay.markDone();
   });
 
   test('share line format is amount-first with no price', () {
@@ -93,7 +99,10 @@ void main() {
     await tester.ensureVisible(find.text('خلص واحفظ'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('خلص واحفظ'));
-    await tester.pumpAndSettle();
+    // Pump through snackbar + navigation to HomePage (enter animation).
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 600));
 
     // No confirm dialog.
     expect(find.text('أنهي الطلب ده؟'), findsNothing);
@@ -163,8 +172,7 @@ void main() {
         OrderLine(
             id: 'l1', personId: 'p1', title: 'Koshary', qty: 1, price: 40),
       ],
-      tipAmount: 12,
-      deliveryFee: 0,
+      tip: const ExtrasField(amount: 12),
     );
 
     await tester.pumpWidget(const App101());
@@ -178,13 +186,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-     // Prices off (default) → no Tip & delivery row.
-    expect(find.text('الخدمات'), findsNothing);
+    // Explicitly turn prices OFF first.
+    await AppSettings.instance.setPricesEnabled(false);
+    await tester.pumpAndSettle();
+
+    // Prices off → no extras rows.
+    expect(find.text('نصيبك'), findsNothing);
 
     await AppSettings.instance.setPricesEnabled(true);
     await tester.pumpAndSettle();
 
-    expect(find.text('الخدمات'), findsWidgets);
+    // Session has only tip=12 → extras share row shows 'نصيبك'
     expect(find.text('نصيبك'), findsWidgets);
   });
 

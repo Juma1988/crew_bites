@@ -8,14 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.5] - 2026-08-08
 
 ### Added
-- Split tip & delivery equally or by order value (Settings → Split)
-- Tip as a % of the food subtotal, with a live "Tip ≈" preview
-- Round shares to whole numbers so the split sums to exactly the bill
-- Tap the Tip & delivery card to edit (no long-press needed)
-- Tip suggestions that round the order up to clean multiples of 10
-- Keep-unfavorited-friends reminder when you start an order
-- Tap the empty "Nobody yet" card to add your first friend
-- Versioned in-app "What's new", shown once per update
+- Debug overlay mode: shows the owning dart file name as a top-right chip on every page. Tap to copy the file path to clipboard — paste it straight into the agent to focus on that page.
+- Debug mode toggle in Settings > About (persisted across sessions)
 
 ### Improved
 - Delivery field moved above Tip — sets the bill the tip % scales from

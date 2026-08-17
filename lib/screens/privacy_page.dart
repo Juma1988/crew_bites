@@ -9,12 +9,14 @@ import '../core/states/app_settings.dart';
 import '../core/theme.dart';
 import '../core/translate.dart';
 import '../core/values/app_values.dart';
+import '../core/debug/debug_registry.dart';
 
 /// Full privacy policy (bundled markdown, offline).
 class PrivacyPage extends StatefulWidget {
   const PrivacyPage({super.key});
 
   static const route = AppValues.routePrivacy;
+  static const String debugSourceFile = 'lib/screens/privacy_page.dart';
 
   @override
   State<PrivacyPage> createState() => _PrivacyPageState();
@@ -57,15 +59,20 @@ class _PrivacyPageState extends State<PrivacyPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    if (AppSettings.instance.debugOverlayEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        DebugRegistry.currentFile.value = 'lib/screens/privacy_page.dart';
+      });
+    }
 
     return ListenableBuilder(
       listenable: AppSettings.instance,
       builder: (context, _) {
-        final ar = AppSettings.instance.isArabic;
-        final path =
-            ar ? 'assets/legal/privacy_ar.md' : 'assets/legal/privacy_en.md';
+          final ar = AppSettings.instance.isArabic;
+          final path =
+              ar ? 'assets/legal/privacy_ar.md' : 'assets/legal/privacy_en.md';
 
-        return Scaffold(
+          return Scaffold(
           body: Stack(
             children: [
               Positioned.fill(
@@ -187,7 +194,7 @@ class _PrivacyPageState extends State<PrivacyPage> {
                     ),
                   ],
                 ),
-              )
+               )
             ],
           ),
         );

@@ -81,9 +81,10 @@ abstract final class OrderStore {
       groupId: session.groupId,
       groupName: session.groupName,
       foodPrices: Map<String, double>.from(session.foodPrices),
-      tipAmount: session.tipAmount,
-      tipPercent: session.tipPercent,
-      deliveryFee: session.deliveryFee,
+      tip: session.tip,
+      delivery: session.delivery,
+      tax: session.tax,
+      service: session.service,
     );
     await saveCurrent(restored, p);
   }
