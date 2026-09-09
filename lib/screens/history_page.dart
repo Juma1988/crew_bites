@@ -137,9 +137,18 @@ class _HistoryPageState extends State<HistoryPage> {
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
-                                      '📋',
-                                      style: theme.textTheme.displaySmall,
+                                    Container(
+                                      width: 72,
+                                      height: 72,
+                                      decoration: BoxDecoration(
+                                        color: scheme.primaryContainer,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.receipt_long_outlined,
+                                        size: 36,
+                                        color: scheme.onPrimaryContainer,
+                                      ),
                                     ),
                                     const SizedBox(height: 12),
                                     Text(
@@ -152,7 +161,7 @@ class _HistoryPageState extends State<HistoryPage> {
                               ),
                             )
                           : ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(22, 0, 22, 32),
+                               padding: AppTheme.pagePadding(context),
                               itemCount: _history.length,
                               separatorBuilder: (a, b) =>
                                   const SizedBox(height: 10),

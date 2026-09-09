@@ -213,7 +213,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       child: _TopBar(),
                     ),
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(22, 0, 22, 40),
+                       padding: AppTheme.pagePadding(context, bottom: 40),
                       sliver: SliverToBoxAdapter(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,

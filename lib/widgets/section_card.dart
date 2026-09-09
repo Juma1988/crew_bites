@@ -27,13 +27,13 @@ class SectionCard extends StatelessWidget {
     final scheme = theme.colorScheme;
     return Container(
       margin: margin,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: scheme.surface.withValues(alpha: 0.95),
+        color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppTheme.radiusCard),
         border: Border.all(
-          color: borderColor ?? scheme.primary.withValues(alpha: 0.35),
-          width: 1.5,
+          color: borderColor ?? scheme.outline,
+          width: 1,
         ),
         boxShadow: AppTheme.softShadow(theme.brightness),
       ),

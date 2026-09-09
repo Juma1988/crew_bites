@@ -525,8 +525,7 @@ class _AddUserPageState extends State<AddUserPage> {
                                   ),
                                 )
                               : ListView.separated(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(22, 0, 22, 24),
+                                   padding: AppTheme.pagePadding(context, bottom: 24),
                                   itemCount: names.length,
                                   separatorBuilder: (a, b) =>
                                       const SizedBox(height: 10),

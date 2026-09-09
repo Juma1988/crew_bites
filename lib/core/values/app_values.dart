@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 /// Seeds tuned for food/crew vibe (inspired by FlexColorScheme-style palettes).
 enum ColorPalette {
   /// Brand coral — matches launcher accent.
-  coral('coral', Color(0xFFFF6B4A), Color(0xFFFFB347)),
+  coral('coral', Color(0xFFDC2626), Color(0xFFA16207)),
 
   /// Blumine / tropical ocean.
   ocean('ocean', Color(0xFF1A6B8A), Color(0xFF5BC0BE)),
@@ -87,8 +87,8 @@ abstract final class AppValues {
   // ── Theme seed (used by AppTheme) ───────────────────────────────────
 
   /// Default brand coral (same as [ColorPalette.coral] seed).
-  static const Color seedColor = Color(0xFFFF6B4A);
-  static const Color accentColor = Color(0xFFFFB347);
+  static const Color seedColor = Color(0xFFDC2626);
+  static const Color accentColor = Color(0xFFA16207);
 
   /// Named color palettes — seed only; icons/assets unchanged.
   static const List<ColorPalette> colorPalettes = ColorPalette.values;

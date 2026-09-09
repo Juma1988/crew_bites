@@ -558,7 +558,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                           ),
                         ),
                         SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(22, 8, 22, 40),
+                           padding: AppTheme.pagePadding(context, bottom: 40).copyWith(top: 8),
                           sliver: SliverToBoxAdapter(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,

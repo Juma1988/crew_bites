@@ -1101,7 +1101,12 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
                       else
                         Expanded(
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+                             padding: EdgeInsets.fromLTRB(
+                               MediaQuery.sizeOf(context).width >= 720 ? 32 : 12,
+                               0,
+                               MediaQuery.sizeOf(context).width >= 720 ? 32 : 12,
+                               0,
+                             ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
