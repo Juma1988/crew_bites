@@ -368,7 +368,7 @@ class _AddUserPageState extends State<AddUserPage> {
     final strings = t;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    if (AppSettings.instance.debugOverlayEnabled) {
+    if (DebugRegistry.enabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         DebugRegistry.currentFile.value = 'lib/screens/add_user_page.dart';
       });

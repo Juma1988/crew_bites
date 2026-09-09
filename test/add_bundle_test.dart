@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_101/core/states/app_settings.dart';
 import 'package:app_101/core/app_navigator.dart';
 import 'package:app_101/core/states/order_store.dart';
-import 'package:app_101/app.dart';
+import 'package:app_101/main.dart';
 import 'package:app_101/models/order_models.dart';
 import 'package:app_101/models/output_args.dart';
 import 'package:app_101/screens/output_history_page.dart';
@@ -97,7 +97,8 @@ void main() {
 
     await tester.ensureVisible(find.byIcon(Icons.playlist_add_rounded));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.playlist_add_rounded), warnIfMissed: false);
+    await tester.tap(find.byIcon(Icons.playlist_add_rounded),
+        warnIfMissed: false);
     await tester.pumpAndSettle();
 
     expect(find.text('سمّي الباقة'), findsWidgets);

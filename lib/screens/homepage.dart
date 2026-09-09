@@ -31,8 +31,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage>
-    with TickerProviderStateMixin {
+class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   SharedPreferences? _prefs;
   OrderSession? _current;
   bool _ready = false;
@@ -128,7 +127,7 @@ class _HomePageState extends State<HomePage>
     final strings = t;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    if (AppSettings.instance.debugOverlayEnabled) {
+    if (DebugRegistry.enabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         DebugRegistry.currentFile.value = 'lib/screens/homepage.dart';
       });
@@ -184,7 +183,9 @@ class _HomePageState extends State<HomePage>
             child: _Blob(
               size: 180,
               color: scheme.primary.withValues(
-                alpha: Theme.of(context).brightness == Brightness.dark ? 0.10 : 0.16,
+                alpha: Theme.of(context).brightness == Brightness.dark
+                    ? 0.10
+                    : 0.16,
               ),
             ),
           ),
@@ -194,7 +195,9 @@ class _HomePageState extends State<HomePage>
             child: _Blob(
               size: 140,
               color: scheme.tertiary.withValues(
-                alpha: Theme.of(context).brightness == Brightness.dark ? 0.08 : 0.12,
+                alpha: Theme.of(context).brightness == Brightness.dark
+                    ? 0.08
+                    : 0.12,
               ),
             ),
           ),
@@ -660,4 +663,3 @@ class _PersonAvatar extends StatelessWidget {
     );
   }
 }
-

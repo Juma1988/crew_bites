@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_haptics.dart';
+import '../../core/debug/debug_registry.dart';
 import '../../core/friend_icon_style.dart';
 import '../../core/states/app_settings.dart';
 import '../../core/theme.dart';
@@ -161,6 +162,12 @@ class _AddUsersDialogState extends State<AddUsersDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    if (DebugRegistry.enabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        DebugRegistry.currentFile.value =
+            'lib/support/dialog/add_users_dialog.dart';
+      });
+    }
 
     return AlertDialog(
       shape: RoundedRectangleBorder(
@@ -180,32 +187,33 @@ class _AddUsersDialogState extends State<AddUsersDialog> {
             ),
             const SizedBox(height: 16),
             Center(
-              child: AppSettings.instance.friendIconStyle == FriendIconStyle.emoji
-                  ? GestureDetector(
-                      onTap: _showEmojiPicker,
-                      child: Column(
-                        children: [
-                          _AvatarPreview(
-                            name: _controller.text,
-                            color: _color,
-                            emoji: _emoji,
+              child:
+                  AppSettings.instance.friendIconStyle == FriendIconStyle.emoji
+                      ? GestureDetector(
+                          onTap: _showEmojiPicker,
+                          child: Column(
+                            children: [
+                              _AvatarPreview(
+                                name: _controller.text,
+                                color: _color,
+                                emoji: _emoji,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                t.tapToChangeAvatar,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: scheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            t.tapToChangeAvatar,
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: scheme.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : _AvatarPreview(
-                      name: _controller.text,
-                      color: _color,
-                      emoji: _emoji,
-                    ),
+                        )
+                      : _AvatarPreview(
+                          name: _controller.text,
+                          color: _color,
+                          emoji: _emoji,
+                        ),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -324,6 +332,12 @@ class _EmojiPickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    if (DebugRegistry.enabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        DebugRegistry.currentFile.value =
+            'lib/support/dialog/add_users_dialog.dart';
+      });
+    }
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),

@@ -68,7 +68,7 @@ class _HistoryPageState extends State<HistoryPage> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final strings = t;
-    if (AppSettings.instance.debugOverlayEnabled) {
+    if (DebugRegistry.enabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         DebugRegistry.currentFile.value = 'lib/screens/history_page.dart';
       });
@@ -94,8 +94,8 @@ class _HistoryPageState extends State<HistoryPage> {
                     children: [
                       Semantics(
                         button: true,
-                        label: MaterialLocalizations.of(context)
-                            .backButtonTooltip,
+                        label:
+                            MaterialLocalizations.of(context).backButtonTooltip,
                         child: IconButton(
                           onPressed: () => Navigator.maybePop(context),
                           icon: const Icon(Icons.arrow_back_rounded),
@@ -246,8 +246,7 @@ class _HistoryEntryCard extends StatelessWidget {
                         child: Text(
                           friendIconMark(p, iconStyle, i),
                           style: TextStyle(
-                            fontSize:
-                                friendUsesEmoji(p, iconStyle) ? 14 : 10,
+                            fontSize: friendUsesEmoji(p, iconStyle) ? 14 : 10,
                             fontWeight: FontWeight.w800,
                             color:
                                 friendUsesEmoji(p, iconStyle) ? null : p.color,

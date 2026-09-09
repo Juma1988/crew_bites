@@ -230,8 +230,12 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
       }
       // Apply default extras from the bundle.
       if (live.defaultTax.hasValue) next = next.copyWith(tax: live.defaultTax);
-      if (live.defaultService.hasValue) next = next.copyWith(service: live.defaultService);
-      if (live.defaultDelivery.hasValue) next = next.copyWith(delivery: live.defaultDelivery);
+      if (live.defaultService.hasValue) {
+        next = next.copyWith(service: live.defaultService);
+      }
+      if (live.defaultDelivery.hasValue) {
+        next = next.copyWith(delivery: live.defaultDelivery);
+      }
       await _save(next);
     }
 
@@ -592,7 +596,9 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
   /// Tap food card → set unit price or edit extras.
   /// For "extras" item, opens 4-field dialog (tip, delivery, tax, service).
   Future<void> _openEditFoodPriceDialog(String foodTitle) async {
-    if (!AppSettings.instance.pricesEnabled && !_isSpecialFood(foodTitle)) return;
+    if (!AppSettings.instance.pricesEnabled && !_isSpecialFood(foodTitle)) {
+      return;
+    }
     final session = _session;
     if (session == null) return;
 
@@ -931,7 +937,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
     final strings = t;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    if (AppSettings.instance.debugOverlayEnabled) {
+    if (DebugRegistry.enabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         DebugRegistry.currentFile.value = 'lib/screens/add_orders_page.dart';
       });

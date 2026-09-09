@@ -7,7 +7,11 @@ import 'package:flutter/foundation.dart';
 /// a navigation transition, this value always reflects the topmost visible
 /// page. The [DebugOverlay] listens to it and shows the chip.
 abstract final class DebugRegistry {
+  /// Keep source-copy controls enabled alongside the Flutter debug banner.
+  static const bool enabled = kDebugMode;
+
   /// Relative path to the dart file of the currently visible page, or `null`
   /// when no page has registered yet.
-  static final ValueNotifier<String?> currentFile = ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> currentFile =
+      ValueNotifier<String?>(null);
 }

@@ -59,9 +59,27 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _emailSupport() async {
     AppHaptics.selectionClick();
-    // Open the default email app with the dev address in the "To" field.
-    // Subject + body are left empty so the user fills in their message.
-    final uri = Uri(scheme: 'mailto', path: LegalConfig.supportEmail);
+    final uri = Uri(
+      scheme: 'mailto',
+      path: LegalConfig.supportEmail,
+      queryParameters: {
+        'subject': '${AppTheme.brandName} (Contact)',
+        'body': '''Hello ${AppTheme.brandName} Support,
+
+I need help with:
+
+What happened:
+
+Steps to reproduce:
+
+Expected result:
+
+Device/OS:
+
+Additional details:
+''',
+      },
+    );
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!ok && mounted) {
@@ -188,7 +206,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    if (AppSettings.instance.debugOverlayEnabled) {
+    if (DebugRegistry.enabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         DebugRegistry.currentFile.value = 'lib/screens/settings_page.dart';
       });
@@ -197,12 +215,12 @@ class _SettingsPageState extends State<SettingsPage> {
     return ListenableBuilder(
       listenable: AppSettings.instance,
       builder: (context, _) {
-          final settings = AppSettings.instance;
-          final mode = settings.themeMode;
-          final localeCode = settings.localeCode;
-          final currency = settings.currencyCode;
+        final settings = AppSettings.instance;
+        final mode = settings.themeMode;
+        final localeCode = settings.localeCode;
+        final currency = settings.currencyCode;
 
-          return Scaffold(
+        return Scaffold(
           body: Stack(
             children: [
               Positioned.fill(
@@ -374,7 +392,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
                     const SizedBox(height: 20),
                     // ── Help & Support ──
-                    Divider(indent: 16, endIndent: 16, color: scheme.outlineVariant.withValues(alpha: 0.4)),
+                    Divider(
+                        indent: 16,
+                        endIndent: 16,
+                        color: scheme.outlineVariant.withValues(alpha: 0.4)),
                     _GroupLabel('Help & Support'),
                     _CollapsibleCard(
                       sectionId: 'help',
@@ -517,20 +538,34 @@ class _SettingsPageState extends State<SettingsPage> {
                       margin: const EdgeInsets.symmetric(horizontal: 12),
                       icon: Icons.mail_outline_rounded,
                       title: strings.contactSupport,
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Expanded(
-                            child: TextButton.icon(
-                              onPressed: _emailSupport,
-                              onLongPress: _copySupportEmail,
-                              icon: const Icon(Icons.mail_outline_rounded),
-                              label: Text(strings.contactSupport),
+                          Text(
+                            LegalConfig.supportEmail,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                          IconButton(
-                            onPressed: _copySupportEmail,
-                            icon: const Icon(Icons.copy_rounded),
-                            tooltip: strings.copiedToast,
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: _emailSupport,
+                                  onLongPress: _copySupportEmail,
+                                  icon: const Icon(Icons.mail_outline_rounded),
+                                  label: Text(strings.contactSupport),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton.filledTonal(
+                                onPressed: _copySupportEmail,
+                                icon: const Icon(Icons.copy_rounded),
+                                tooltip: strings.copiedToast,
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -568,7 +603,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
                     const SizedBox(height: 20),
                     // ── About ──
-                    Divider(indent: 16, endIndent: 16, color: scheme.outlineVariant.withValues(alpha: 0.4)),
+                    Divider(
+                        indent: 16,
+                        endIndent: 16,
+                        color: scheme.outlineVariant.withValues(alpha: 0.4)),
                     _GroupLabel('About'),
                     _CollapsibleCard(
                       sectionId: 'about',
@@ -683,17 +721,22 @@ class _SettingsPageState extends State<SettingsPage> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          for (final note in Changelog.entryFor(AppValues.appVersion)?.notes(AppSettings.instance.isArabic) ?? [])
+                          for (final note
+                              in Changelog.entryFor(AppValues.appVersion)
+                                      ?.notes(AppSettings.instance.isArabic) ??
+                                  [])
                             Padding(
                               padding: const EdgeInsets.only(bottom: 8),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('•  ', style: theme.textTheme.bodyMedium),
+                                  Text('•  ',
+                                      style: theme.textTheme.bodyMedium),
                                   Expanded(
                                     child: Text(
                                       note,
-                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                      style:
+                                          theme.textTheme.bodyMedium?.copyWith(
                                         height: 1.4,
                                       ),
                                     ),
@@ -751,10 +794,10 @@ class _GroupLabel extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: scheme.onSurfaceVariant,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.2,
-        ),
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
       ),
     );
   }

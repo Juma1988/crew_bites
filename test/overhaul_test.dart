@@ -9,7 +9,7 @@ import 'package:app_101/core/states/crew_store.dart';
 import 'package:app_101/core/states/order_store.dart';
 import 'package:app_101/core/translate.dart';
 import 'package:app_101/core/values/app_values.dart';
-import 'package:app_101/app.dart';
+import 'package:app_101/main.dart';
 import 'package:app_101/models/order_models.dart';
 import 'package:app_101/models/output_args.dart';
 import 'package:app_101/models/restaurant_group.dart';
@@ -305,7 +305,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.playlist_add_rounded), findsOneWidget);
     expect(find.byIcon(Icons.update_rounded), findsNothing);
-    expect(find.byIcon(Icons.copy_rounded), findsNothing);
+    expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -359,7 +359,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.update_rounded), findsOneWidget);
     expect(find.byIcon(Icons.playlist_add_rounded), findsNothing);
-    expect(find.byIcon(Icons.copy_rounded), findsNothing);
+    expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -412,7 +412,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.update_rounded), findsNothing);
     expect(find.byIcon(Icons.playlist_add_rounded), findsNothing);
-    expect(find.byIcon(Icons.copy_rounded), findsNothing);
+    expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

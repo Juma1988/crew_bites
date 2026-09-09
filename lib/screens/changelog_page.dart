@@ -20,7 +20,7 @@ class ChangelogPage extends StatelessWidget {
     final scheme = theme.colorScheme;
     final t = Translate.instance;
     final isArabic = AppSettings.instance.isArabic;
-    if (AppSettings.instance.debugOverlayEnabled) {
+    if (DebugRegistry.enabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         DebugRegistry.currentFile.value = 'lib/screens/changelog_page.dart';
       });

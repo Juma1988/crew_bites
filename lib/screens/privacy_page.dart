@@ -59,7 +59,7 @@ class _PrivacyPageState extends State<PrivacyPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    if (AppSettings.instance.debugOverlayEnabled) {
+    if (DebugRegistry.enabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         DebugRegistry.currentFile.value = 'lib/screens/privacy_page.dart';
       });
@@ -68,11 +68,11 @@ class _PrivacyPageState extends State<PrivacyPage> {
     return ListenableBuilder(
       listenable: AppSettings.instance,
       builder: (context, _) {
-          final ar = AppSettings.instance.isArabic;
-          final path =
-              ar ? 'assets/legal/privacy_ar.md' : 'assets/legal/privacy_en.md';
+        final ar = AppSettings.instance.isArabic;
+        final path =
+            ar ? 'assets/legal/privacy_ar.md' : 'assets/legal/privacy_en.md';
 
-          return Scaffold(
+        return Scaffold(
           body: Stack(
             children: [
               Positioned.fill(
@@ -122,10 +122,9 @@ class _PrivacyPageState extends State<PrivacyPage> {
                             child: Container(
                               padding: const EdgeInsets.all(18),
                               decoration: BoxDecoration(
-                                color:
-                                    scheme.surface.withValues(alpha: 0.94),
-                                borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusCard),
+                                color: scheme.surface.withValues(alpha: 0.94),
+                                borderRadius:
+                                    BorderRadius.circular(AppTheme.radiusCard),
                                 border: Border.all(
                                   color: scheme.outlineVariant
                                       .withValues(alpha: 0.45),
@@ -194,7 +193,7 @@ class _PrivacyPageState extends State<PrivacyPage> {
                     ),
                   ],
                 ),
-               )
+              )
             ],
           ),
         );

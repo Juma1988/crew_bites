@@ -319,6 +319,15 @@ class Translate {
   String get save => _tr('Save', 'احفظ');
   String get confirmAction => _tr('Confirm', 'تأكيد');
 
+  String get discardChangesTitle => _tr('Discard changes?', 'تجاهل التغييرات؟');
+
+  String get discardChangesBody => _tr(
+        'You have unsaved add-on changes.',
+        'عندك تغييرات في الإضافات لسه متحفظتش.',
+      );
+
+  String get discardChanges => _tr('Discard', 'تجاهل');
+
   String get personName => _tr('Name', 'الاسم');
 
   String get personEmoji => _tr('Emoji', 'إيموجي');
@@ -496,8 +505,15 @@ class Translate {
 
   String get grandTotalBreakdown => _tr('Add-ons breakdown', 'تفاصيل الإضافات');
 
-  String grandTotalLabel(double amount) =>
-      _tr('Grand total ${money(amount)}', 'الإجمالي ${money(amount)}');
+  String grandTotalLabel(double amount, [double? addons]) {
+    if (addons == null) {
+      return _tr('Grand total ${money(amount)}', 'الإجمالي ${money(amount)}');
+    }
+    return _tr(
+      'Grand total ${money(amount)} (${money(addons)})',
+      'الإجمالي ${money(amount)} (${money(addons)})',
+    );
+  }
 
   String get copiedToast => _tr('Copied ✓', 'اتنسخ ✓');
 
@@ -568,8 +584,7 @@ class Translate {
         FriendIconStyle.firstTwo => _tr('First two letters', 'أول حرفين'),
       };
 
-  String get settingsExtrasSplit =>
-      _tr('Split add-ons', 'تقسيم الإضافات');
+  String get settingsExtrasSplit => _tr('Split add-ons', 'تقسيم الإضافات');
 
   String get extrasSplitBody => _tr(
         'Split even gives everyone an equal share. By order value splits proportionally to each person\'s food total.',

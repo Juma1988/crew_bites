@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:app_101/core/app_haptics.dart';
+import 'package:app_101/core/debug/debug_registry.dart';
 import 'package:app_101/core/translate.dart';
 import 'package:app_101/core/values/app_values.dart';
 import 'package:app_101/models/order_models.dart';
@@ -21,8 +22,7 @@ class BundleItemsEditorSheet extends StatefulWidget {
   final Future<void> Function()? onDelete;
 
   @override
-  State<BundleItemsEditorSheet> createState() =>
-      _BundleItemsEditorSheetState();
+  State<BundleItemsEditorSheet> createState() => _BundleItemsEditorSheetState();
 }
 
 class _BundleItemsEditorSheetState extends State<BundleItemsEditorSheet> {
@@ -48,7 +48,8 @@ class _BundleItemsEditorSheetState extends State<BundleItemsEditorSheet> {
 
   Future<void> _commit(List<String> items) async {
     setState(() => _items = items);
-    await widget.onChanged(widget.group.copyWith(items: List<String>.from(items)));
+    await widget
+        .onChanged(widget.group.copyWith(items: List<String>.from(items)));
   }
 
   Future<void> _addItem() async {
@@ -68,7 +69,8 @@ class _BundleItemsEditorSheetState extends State<BundleItemsEditorSheet> {
 
   Future<void> _removeAt(int index) async {
     // Special items (Tip, Delivery) can't be removed from bundles.
-    if (AppValues.specialFoodKeys.contains(_items[index].toLowerCase().trim())) {
+    if (AppValues.specialFoodKeys
+        .contains(_items[index].toLowerCase().trim())) {
       return;
     }
     AppHaptics.lightImpact();
@@ -158,6 +160,12 @@ class _BundleItemsEditorSheetState extends State<BundleItemsEditorSheet> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    if (DebugRegistry.enabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        DebugRegistry.currentFile.value =
+            'lib/screens/add_orders/widgets/bundle_items_editor_sheet.dart';
+      });
+    }
     final title = t.editBundleTitle(
       widget.group.displayName(arabic: t.isAr),
     );
