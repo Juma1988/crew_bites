@@ -16,6 +16,7 @@ class RestaurantGroup {
     this.defaultTax = const ExtrasField(),
     this.defaultService = const ExtrasField(),
     this.defaultDelivery = const ExtrasField(),
+    this.defaultTip = const ExtrasField(),
     this.isBuiltIn = false,
   });
 
@@ -35,6 +36,7 @@ class RestaurantGroup {
   final ExtrasField defaultTax;
   final ExtrasField defaultService;
   final ExtrasField defaultDelivery;
+  final ExtrasField defaultTip;
 
   final bool isBuiltIn;
 
@@ -79,6 +81,7 @@ class RestaurantGroup {
     ExtrasField? defaultTax,
     ExtrasField? defaultService,
     ExtrasField? defaultDelivery,
+    ExtrasField? defaultTip,
     bool? isBuiltIn,
   }) {
     return RestaurantGroup(
@@ -92,6 +95,7 @@ class RestaurantGroup {
       defaultTax: defaultTax ?? this.defaultTax,
       defaultService: defaultService ?? this.defaultService,
       defaultDelivery: defaultDelivery ?? this.defaultDelivery,
+      defaultTip: defaultTip ?? this.defaultTip,
       isBuiltIn: isBuiltIn ?? this.isBuiltIn,
     );
   }
@@ -129,6 +133,7 @@ class RestaurantGroup {
           'defaultService': _extrasToJson(defaultService),
         if (defaultDelivery.hasValue)
           'defaultDelivery': _extrasToJson(defaultDelivery),
+        if (defaultTip.hasValue) 'defaultTip': _extrasToJson(defaultTip),
         'isBuiltIn': isBuiltIn,
       };
 
@@ -173,6 +178,7 @@ class RestaurantGroup {
           _extrasFromJson(json['defaultService'] as Map<String, dynamic>?),
       defaultDelivery:
           _extrasFromJson(json['defaultDelivery'] as Map<String, dynamic>?),
+      defaultTip: _extrasFromJson(json['defaultTip'] as Map<String, dynamic>?),
       isBuiltIn: json['isBuiltIn'] as bool? ?? false,
     );
   }

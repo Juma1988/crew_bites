@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../core/app_haptics.dart';
+import '../core/services/shared_preferences_service.dart';
 import '../core/theme.dart';
 import '../core/translate.dart';
 import '../core/values/app_values.dart';
@@ -15,13 +14,13 @@ class OnboardingOverlay extends StatefulWidget {
 
   /// Check if onboarding is already done.
   static Future<bool> isDone() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferencesService.instance.get();
     return prefs.getBool(AppValues.prefsOnboardingDone) ?? false;
   }
 
   /// Mark onboarding as done.
   static Future<void> markDone() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferencesService.instance.get();
     await prefs.setBool(AppValues.prefsOnboardingDone, true);
   }
 

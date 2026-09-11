@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/app_haptics.dart';
 import '../core/debug/debug_registry.dart';
+import '../core/services/shared_preferences_service.dart';
 import '../core/states/app_settings.dart';
 import '../core/states/bundles_store.dart';
 import '../core/states/order_store.dart';
@@ -69,7 +70,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
   }
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferencesService.instance.get();
     var session = await OrderStore.loadCurrent(
       prefs,
       () => AppSettings.instance.notePrefsCorrupt(),
@@ -228,11 +229,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
     if (prices.isEmpty) return;
     // Always reload latest prefs so we don't wipe concurrent edits.
     final latest = await BundlesStore.load(_prefs);
-    final updated = BundlesStore.applyItemPrices(
-      latest,
-      prices,
-      preferGroupId: _session?.groupId,
-    );
+    final updated = BundlesStore.applyItemPrices(latest, prices);
     setState(() => _groups = updated);
     await BundlesStore.save(updated, _prefs);
   }
@@ -307,6 +304,7 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
       if (live.defaultDelivery.hasValue) {
         next = next.copyWith(delivery: live.defaultDelivery);
       }
+      if (live.defaultTip.hasValue) next = next.copyWith(tip: live.defaultTip);
       await _save(next);
     }
 
@@ -721,6 +719,9 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
             bundle =
                 bundle.copyWith(defaultDelivery: all[ExtrasCategory.delivery]!);
           }
+          if (all[ExtrasCategory.tip]?.hasValue == true) {
+            bundle = bundle.copyWith(defaultTip: all[ExtrasCategory.tip]!);
+          }
           _updateGroup(bundle);
         }
       }
@@ -962,6 +963,9 @@ class _AddOrdersPageState extends State<AddOrdersPage> {
             if (all[ExtrasCategory.delivery]?.hasValue == true) {
               bundle = bundle.copyWith(
                   defaultDelivery: all[ExtrasCategory.delivery]!);
+            }
+            if (all[ExtrasCategory.tip]?.hasValue == true) {
+              bundle = bundle.copyWith(defaultTip: all[ExtrasCategory.tip]!);
             }
             _updateGroup(bundle);
           }

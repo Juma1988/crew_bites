@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../core/app_haptics.dart';
+import '../core/services/shared_preferences_service.dart';
 import '../core/theme.dart';
 import '../core/translate.dart';
 import '../core/values/app_values.dart';
@@ -14,12 +13,12 @@ class SummaryOnboarding extends StatefulWidget {
   final Widget child;
 
   static Future<bool> isDone() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferencesService.instance.get();
     return prefs.getBool(AppValues.prefsSummaryOnboardingDone) ?? false;
   }
 
   static Future<void> markDone() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferencesService.instance.get();
     await prefs.setBool(AppValues.prefsSummaryOnboardingDone, true);
   }
 

@@ -72,8 +72,13 @@ Perfect for:
 ### 📤 Sharing Options
 - Copy order summary as text
 - Share via messaging apps
-- Share order summaries as text
+- Share an offline QR code containing the order
 - Create reusable bundles from any order
+
+### ✅ Collection Tracking
+- Mark each person's share as paid
+- Favorite recurring orders for quick reuse
+- Filter history to show favorite orders
 
 ---
 

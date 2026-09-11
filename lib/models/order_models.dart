@@ -203,10 +203,12 @@ class OrderSession {
     this.groupId,
     this.groupName,
     this.foodPrices = const {},
+    this.paidByPerson = const {},
     this.tip = const ExtrasField(),
     this.delivery = const ExtrasField(),
     this.tax = const ExtrasField(),
     this.service = const ExtrasField(),
+    this.isFavorite = false,
   });
 
   final String id;
@@ -224,6 +226,9 @@ class OrderSession {
   /// Unit price per food title (lowercased key). Used for menu + new lines.
   final Map<String, double> foodPrices;
 
+  /// Whether each person has paid their share. Missing ids are unpaid.
+  final Map<String, bool> paidByPerson;
+
   /// Tip field (fixed amount or % of food subtotal). Split evenly.
   final ExtrasField tip;
 
@@ -236,9 +241,14 @@ class OrderSession {
   /// Service charge, disabled by default. Split by order value.
   final ExtrasField service;
 
+  /// Whether this offline order is a favorite for quick reuse.
+  final bool isFavorite;
+
   bool get isEmpty => people.isEmpty && lines.isEmpty;
   bool get hasContent => people.isNotEmpty || lines.isNotEmpty;
   int get itemCount => lines.fold(0, (sum, l) => sum + l.qty);
+
+  bool isPersonPaid(String personId) => paidByPerson[personId] ?? false;
 
   /// Food subtotal only (no extras).
   double get orderTotal => lines.fold(0.0, (sum, l) => sum + l.lineTotal);
@@ -417,10 +427,12 @@ class OrderSession {
     String? groupId,
     String? groupName,
     Map<String, double>? foodPrices,
+    Map<String, bool>? paidByPerson,
     ExtrasField? tip,
     ExtrasField? delivery,
     ExtrasField? tax,
     ExtrasField? service,
+    bool? isFavorite,
     bool clearGroup = false,
   }) {
     return OrderSession(
@@ -432,10 +444,12 @@ class OrderSession {
       groupId: clearGroup ? null : (groupId ?? this.groupId),
       groupName: clearGroup ? null : (groupName ?? this.groupName),
       foodPrices: foodPrices ?? this.foodPrices,
+      paidByPerson: paidByPerson ?? this.paidByPerson,
       tip: tip ?? this.tip,
       delivery: delivery ?? this.delivery,
       tax: tax ?? this.tax,
       service: service ?? this.service,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 
@@ -448,10 +462,12 @@ class OrderSession {
         groupId: groupId,
         groupName: groupName,
         foodPrices: Map<String, double>.from(foodPrices),
+        paidByPerson: Map<String, bool>.from(paidByPerson),
         tip: tip,
         delivery: delivery,
         tax: tax,
         service: service,
+        isFavorite: isFavorite,
       );
 
   Map<String, dynamic> toJson() => {
@@ -463,10 +479,12 @@ class OrderSession {
         if (groupId != null) 'groupId': groupId,
         if (groupName != null) 'groupName': groupName,
         if (foodPrices.isNotEmpty) 'foodPrices': foodPrices,
+        if (paidByPerson.isNotEmpty) 'paidByPerson': paidByPerson,
         'tip': tip.toJson(),
         'delivery': delivery.toJson(),
         'tax': tax.toJson(),
         'service': service.toJson(),
+        'isFavorite': isFavorite,
       };
 
   String encode() => jsonEncode(toJson());
@@ -477,6 +495,13 @@ class OrderSession {
     if (rawPrices is Map) {
       rawPrices.forEach((k, v) {
         prices[k.toString().toLowerCase()] = (v as num).toDouble();
+      });
+    }
+    final paid = <String, bool>{};
+    final rawPaid = json['paidByPerson'];
+    if (rawPaid is Map) {
+      rawPaid.forEach((k, v) {
+        if (v is bool) paid[k.toString()] = v;
       });
     }
 
@@ -519,10 +544,12 @@ class OrderSession {
       groupId: json['groupId'] as String?,
       groupName: json['groupName'] as String?,
       foodPrices: prices,
+      paidByPerson: paid,
       tip: tip,
       delivery: delivery,
       tax: tax,
       service: service,
+      isFavorite: json['isFavorite'] as bool? ?? false,
     );
   }
 

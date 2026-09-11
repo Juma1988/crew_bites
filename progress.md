@@ -12,3 +12,30 @@
 ## 2026-09-10 00:01 — Rei · Publishing — Clarified Google Play image quantity limits
 - Released/Changed: Nothing; explained feature graphic and screenshot counts.
 - Verified: Current listing asset distinctions and typical limits provided.
+## 2026-09-11 00:00 — Yuna · Logic — Centralized SharedPreferences access\n- Changed: Added SharedPreferencesService and migrated all lib callers; retained optional store injections; added focused service test.\n- Verified: flutter analyze, focused order/crew/service tests, and flutter run -d emulator-5554 --no-resident passed.
+## 2026-09-11 00:00 — Yuna · Logic — Added opt-in release crash reporting
+- Changed: Added Sentry-backed CrashReporter abstraction, Flutter/zone wiring, dependency lock updates, docs, and focused tests.
+- Verified: flutter pub get, flutter analyze, flutter test (125 passed), and flutter run -d emulator-5554 --no-resident built/installed/launched.
+## 2026-09-11 16:48 — Yuna · Logic — Added restaurant-specific default tips
+- Changed: RestaurantGroup defaultTip JSON/copy/migration; AddOrders bundle selection and persistence; focused model/store/widget tests
+- Verified: flutter analyze clean; focused Flutter tests 24 passed; Android emulator flutter run built/installed/launched (CLI timed out after startup)
+## 2026-09-11 00:00 — Yuna · Logic — Add quick tip percentage chips\n- Changed: Added localized-pattern 10%, 15%, and 20% tip chips; added widget coverage for percentage and fixed modes.\n- Verified: flutter analyze, flutter test, focused extras dialog tests, and flutter run -d emulator-5554 --no-resident passed.
+## 2026-09-11 00:00 — Yuna · Logic — Added locale-aware multi-currency amount formatting
+- Changed: Added direct intl dependency; localized grouped/decimal formatting from AppSettings locale and preserved currency labels/Arabic presentation; added focused tests.
+- Verified: flutter pub get, flutter analyze, focused translate/widget tests (19 passed), and flutter run -d emulator-5554 built/installed/launched before CLI timeout.
+## 2026-09-11 00:00 — Yuna · Logic — Implemented offline shareable order QR codes
+- Changed: Added versioned OrderQrPayload URI codec, QR dialog with copy/share actions, qr_flutter dependency, and EN/AR labels.
+- Verified: flutter pub get, flutter analyze, focused QR tests, full flutter test, and flutter run -d emulator-5554 --no-resident succeeded.
+## 2026-09-11 00:01 — Yuna · Logic — Finalized QR implementation verification
+- Changed: Confirmed offline payload, dialog, localization, dependency, and tests are integrated.
+- Verified: All requested Flutter commands completed; Android emulator build/install/startup succeeded.
+## 2026-09-11 00:00 — Yuna · Logic — Add persisted per-person payment tracking
+- Changed: OrderSession paidByPerson JSON/copy/snapshot/restore and localized summary checkbox persistence.
+- Verified: flutter analyze, flutter test, focused tests, and flutter run -d emulator-5554 built/installed/launched.
+## 2026-09-11 00:01 — Yuna · Logic — Complete payment status tracking verification
+- Changed: Finalized persisted paid map, localized summary control, and regression coverage.
+- Verified: Full Flutter test suite passed; Android emulator build/install/launch succeeded.
+## 2026-09-11 00:00 — Yuna · Logic — Implemented offline favorite orders\n- Changed: Added OrderSession isFavorite persistence/copy/snapshot/restore and history star toggle/filter.\n- Verified: flutter analyze, flutter test, focused order_store_test, and flutter run -d emulator-5554 reached the running app.
+## 2026-09-11 00:00 — Kira · Testing & QA — Reviewed uncommitted storage, Sentry, defaults, tips, QR, payments, favorites, currency, and CI changes
+- Tested/Found: Flutter tests/analyze and Android debug build passed; release Fastlane path is unverified and statically appears mislocated from repository root.
+- Verified: flutter test; flutter analyze; flutter build apk --debug; flutter run -d emulator-5554 --debug (startup succeeded); Ruby/Fastlane checks blocked because Ruby/bundle are unavailable on this host.

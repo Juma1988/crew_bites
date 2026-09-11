@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
+import 'services/shared_preferences_service.dart';
 import 'states/app_settings.dart';
 import 'translate.dart';
 import 'values/app_values.dart';
@@ -126,7 +125,7 @@ abstract final class Changelog {
 /// Show the "What's new" sheet once per app version.
 /// Fresh installs (onboarding not started) never see it.
 Future<void> maybeShowWhatsNew(BuildContext context) async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = await SharedPreferencesService.instance.get();
   final current = AppValues.appVersion;
   final lastSeen = prefs.getString(AppValues.prefsLastSeenChangelog);
   final freshInstall = !(prefs.getBool(AppValues.prefsOnboardingDone) ?? false);

@@ -12,6 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.47.1"
@@ -26,6 +31,12 @@ jobs:
 
       - name: Test
         run: flutter test
+
+      - name: Validate Fastlane configuration
+        run: |
+          ruby -c fastlane/Fastfile
+          ruby -c fastlane/Appfile
+          bundle exec fastlane lanes
 
       - name: Build Android APK
         run: flutter build apk --debug

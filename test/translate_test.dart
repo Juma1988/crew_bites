@@ -27,6 +27,18 @@ void main() {
       expect(t.formatAmount(0.01), '0.01');
       expect(t.formatAmount(99.99), '99.99');
     });
+
+    test('English uses grouped decimal formatting', () async {
+      await AppSettings.instance.setLocaleCode('en');
+      expect(Translate.instance.formatAmount(1234.5), '1,234.50');
+      expect(Translate.instance.formatAmount(1234), '1,234');
+    });
+
+    test('Arabic preserves the established numeric presentation', () async {
+      await AppSettings.instance.setLocaleCode('ar');
+      expect(Translate.instance.formatAmount(1234.5), '1,234.50');
+      expect(Translate.instance.formatAmount(1234), '1,234');
+    });
   });
 
   group('Translate.money', () {
@@ -45,6 +57,16 @@ void main() {
     test('hideZero returns value for positive', () {
       const t = Translate();
       expect(t.money(10, hideZero: true), isNotEmpty);
+    });
+
+    test('keeps visible currency choices while localizing amount', () async {
+      await AppSettings.instance.setLocaleCode('en');
+      await AppSettings.instance.setCurrencyCode('USD');
+      expect(Translate.instance.money(1234.5), '1,234.50 \$');
+
+      await AppSettings.instance.setLocaleCode('ar');
+      await AppSettings.instance.setCurrencyCode('EGP');
+      expect(Translate.instance.money(1234.5), '1,234.50 ج.م');
     });
   });
 

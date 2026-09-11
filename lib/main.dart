@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'core/app_navigator.dart';
 import 'core/bootstrap.dart';
 import 'core/changelog.dart';
+import 'core/crash_reporter.dart';
 import 'core/debug/debug_overlay.dart';
 import 'core/debug/debug_registry.dart';
 import 'core/locales.dart';
@@ -51,9 +52,10 @@ class App101 extends StatelessWidget {
 }
 
 void main() {
+  CrashReporter? crashReporter;
   runZonedGuarded(
     () async {
-      await bootstrap();
+      crashReporter = await bootstrap();
       runApp(const App101());
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final ctx = AppNavigator.key.currentContext;
@@ -61,8 +63,11 @@ void main() {
       });
     },
     (error, stack) {
-      // In production this would report to a crash service.
       Zone.current.print(error.toString());
+      final reporter = crashReporter;
+      if (reporter != null) {
+        unawaited(reportCrashSafely(reporter, error, stack, source: 'zone'));
+      }
     },
   );
 }

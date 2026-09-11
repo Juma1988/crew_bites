@@ -3,7 +3,7 @@ default_platform(:android)
 platform :android do
   desc "Build release AAB"
   lane :build do
-    gradle(task: "clean bundleRelease")
+    gradle(task: "clean bundleRelease", project_dir: "android")
   end
 
   desc "Deploy to internal testing track"
@@ -21,7 +21,7 @@ platform :android do
 
   desc "Capture screenshots"
   lane :screenshots do
-    gradle(task: "clean assembleDebug")
+    gradle(task: "clean assembleDebug", project_dir: "android")
     screengrab(
       app_package_name: "com.i1988.crewbites",
       use_tests_in_package: "com.i1988.crewbites",

@@ -45,6 +45,7 @@ void main() {
         delivery: const ExtrasField(amount: 10),
         tax: const ExtrasField(percent: 14, usePercent: true),
         service: const ExtrasField(percent: 12, usePercent: true),
+        paidByPerson: const {'p1': true},
       );
 
       final json = session.toJson();
@@ -67,6 +68,31 @@ void main() {
       expect(decoded.tax.usePercent, isTrue);
       expect(decoded.service.percent, 12);
       expect(decoded.service.usePercent, isTrue);
+      expect(decoded.paidByPerson, {'p1': true});
+      expect(decoded.isFavorite, isFalse);
+    });
+
+    test('favorite flag round-trips and old JSON defaults to false', () {
+      final session = OrderSession(
+        id: 'favorite',
+        createdAt: DateTime(2025, 1, 1),
+        people: const [],
+        lines: const [],
+        isFavorite: true,
+      );
+
+      expect(OrderSession.fromJson(session.toJson()).isFavorite, isTrue);
+      expect(
+        OrderSession.fromJson({
+          'id': 'old',
+          'createdAt': '2025-01-01T00:00:00.000',
+          'people': <Map<String, dynamic>>[],
+          'lines': <Map<String, dynamic>>[],
+        }).isFavorite,
+        isFalse,
+      );
+      expect(session.copyWith(isFavorite: false).isFavorite, isFalse);
+      expect(session.snapshot().isFavorite, isTrue);
     });
 
     test('encode/decode round-trip via JSON string', () {
@@ -200,6 +226,72 @@ void main() {
       expect(json.containsKey('groupName'), isFalse);
       expect(json.containsKey('foodPrices'), isFalse);
     });
+
+    test(
+        'missing paid map remains backward compatible and copy/snapshot preserve it',
+        () {
+      final session = OrderSession.fromJson({
+        'id': 'paid_compat',
+        'createdAt': '2025-01-01T00:00:00.000',
+        'people': <Map<String, dynamic>>[],
+        'lines': <Map<String, dynamic>>[],
+      });
+      expect(session.paidByPerson, isEmpty);
+      final updated = session.copyWith(paidByPerson: const {'p1': true});
+      expect(updated.isPersonPaid('p1'), isTrue);
+      expect(updated.snapshot().paidByPerson, {'p1': true});
+    });
+  });
+
+  test('restoreAsCurrent preserves paid status map', () async {
+    final session = OrderSession(
+      id: 'history_paid',
+      createdAt: DateTime(2025, 1, 1),
+      people: const [Person(id: 'p1', name: 'Ali', colorValue: 0xFF000000)],
+      lines: const [OrderLine(id: 'l1', personId: 'p1', title: 'Tea')],
+      paidByPerson: const {'p1': true},
+    );
+    await OrderStore.restoreAsCurrent(session, prefs);
+    final restored = await OrderStore.loadCurrent(prefs);
+    expect(restored?.paidByPerson, {'p1': true});
+  });
+
+  test('restoreAsCurrent preserves favorite flag', () async {
+    final session = OrderSession(
+      id: 'history_favorite',
+      createdAt: DateTime(2025, 1, 1),
+      people: const [],
+      lines: const [OrderLine(id: 'l1', personId: 'p1', title: 'Tea')],
+      isFavorite: true,
+    );
+    await OrderStore.restoreAsCurrent(session, prefs);
+    expect((await OrderStore.loadCurrent(prefs))?.isFavorite, isTrue);
+  });
+
+  test('setHistoryFavorite updates and persists only the selected entry',
+      () async {
+    final history = [
+      OrderSession(
+        id: 'one',
+        createdAt: DateTime(2025, 1, 1),
+        people: const [],
+        lines: const [],
+      ),
+      OrderSession(
+        id: 'two',
+        createdAt: DateTime(2025, 1, 2),
+        people: const [],
+        lines: const [],
+        isFavorite: true,
+      ),
+    ];
+
+    final updated =
+        await OrderStore.setHistoryFavorite('one', true, history, prefs);
+    expect(updated.map((s) => s.id), ['one', 'two']);
+    expect(updated.map((s) => s.isFavorite), [true, true]);
+    final loaded = await OrderStore.loadHistory(prefs);
+    expect(loaded.map((s) => s.isFavorite), [true, true]);
   });
 
   // ── OrderSession computed properties ─────────────────────────────────

@@ -26,6 +26,7 @@ class HistoryPage extends StatefulWidget {
 class _HistoryPageState extends State<HistoryPage> {
   List<OrderSession> _history = [];
   bool _ready = false;
+  bool _favoritesOnly = false;
 
   static const t = Translate();
 
@@ -61,6 +62,23 @@ class _HistoryPageState extends State<HistoryPage> {
       arguments: OutputHistoryArgs(session: session, fromHistory: true),
     );
     if (mounted) await _load();
+  }
+
+  Future<void> _toggleFavorite(OrderSession session) async {
+    final nextFavorite = !session.isFavorite;
+    setState(() {
+      _history = [
+        for (final item in _history)
+          item.id == session.id
+              ? item.copyWith(isFavorite: nextFavorite)
+              : item,
+      ];
+    });
+    await OrderStore.setHistoryFavorite(
+      session.id,
+      nextFavorite,
+      _history,
+    );
   }
 
   @override
@@ -122,6 +140,28 @@ class _HistoryPageState extends State<HistoryPage> {
                   ),
                 ),
                 const SizedBox(height: 4),
+                if (_ready && _history.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 4, 22, 10),
+                    child: SegmentedButton<bool>(
+                      segments: [
+                        ButtonSegment<bool>(
+                          value: false,
+                          label: Text(strings.allOrders),
+                          icon: const Icon(Icons.list_alt_rounded),
+                        ),
+                        ButtonSegment<bool>(
+                          value: true,
+                          label: Text(strings.favoriteOrders),
+                          icon: const Icon(Icons.star_rounded),
+                        ),
+                      ],
+                      selected: {_favoritesOnly},
+                      onSelectionChanged: (selection) => setState(
+                        () => _favoritesOnly = selection.first,
+                      ),
+                    ),
+                  ),
                 Expanded(
                   child: !_ready
                       ? Center(
@@ -130,7 +170,7 @@ class _HistoryPageState extends State<HistoryPage> {
                             child: const CircularProgressIndicator(),
                           ),
                         )
-                      : _history.isEmpty
+                      : _visibleHistory.isEmpty
                           ? Center(
                               child: Padding(
                                 padding: const EdgeInsets.all(32),
@@ -143,7 +183,9 @@ class _HistoryPageState extends State<HistoryPage> {
                                     ),
                                     const SizedBox(height: 12),
                                     Text(
-                                      strings.historyEmpty,
+                                      _history.isEmpty
+                                          ? strings.historyEmpty
+                                          : strings.favoriteOrdersEmpty,
                                       textAlign: TextAlign.center,
                                       style: theme.textTheme.titleMedium,
                                     ),
@@ -153,15 +195,17 @@ class _HistoryPageState extends State<HistoryPage> {
                             )
                           : ListView.separated(
                               padding: const EdgeInsets.fromLTRB(22, 0, 22, 32),
-                              itemCount: _history.length,
+                              itemCount: _visibleHistory.length,
                               separatorBuilder: (a, b) =>
                                   const SizedBox(height: 10),
                               itemBuilder: (context, i) {
-                                final session = _history[i];
+                                final session = _visibleHistory[i];
                                 return _HistoryEntryCard(
                                   t: strings,
                                   session: session,
                                   onTap: () => _openEntry(session),
+                                  onFavoriteToggle: () =>
+                                      _toggleFavorite(session),
                                 );
                               },
                             ),
@@ -173,6 +217,10 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
     );
   }
+
+  List<OrderSession> get _visibleHistory => _favoritesOnly
+      ? _history.where((session) => session.isFavorite).toList()
+      : _history;
 }
 
 class _HistoryEntryCard extends StatelessWidget {
@@ -180,11 +228,13 @@ class _HistoryEntryCard extends StatelessWidget {
     required this.t,
     required this.session,
     required this.onTap,
+    required this.onFavoriteToggle,
   });
 
   final Translate t;
   final OrderSession session;
   final VoidCallback onTap;
+  final VoidCallback onFavoriteToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -212,11 +262,36 @@ class _HistoryEntryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                t.orderedOn(dateStr),
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: scheme.primary,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      t.orderedOn(dateStr),
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: scheme.primary,
+                      ),
+                    ),
+                  ),
+                  Semantics(
+                    button: true,
+                    toggled: session.isFavorite,
+                    label: session.isFavorite
+                        ? t.unfavoriteOrder
+                        : t.favoriteOrder,
+                    child: IconButton(
+                      tooltip: session.isFavorite
+                          ? t.unfavoriteOrder
+                          : t.favoriteOrder,
+                      icon: Icon(
+                        session.isFavorite
+                            ? Icons.star_rounded
+                            : Icons.star_border_rounded,
+                        color: session.isFavorite ? scheme.primary : null,
+                      ),
+                      onPressed: onFavoriteToggle,
+                    ),
+                  ),
+                ],
               ),
               if (session.hasPlace) ...[
                 const SizedBox(height: 4),

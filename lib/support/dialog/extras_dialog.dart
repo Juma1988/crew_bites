@@ -69,6 +69,7 @@ class _ExtrasDialogState extends State<_ExtrasDialog> {
   bool _deliveryCustom = false;
 
   static const _deliverySuggestions = [15.0, 25.0, 40.0];
+  static const _tipPercentageSuggestions = [10.0, 15.0, 20.0];
 
   @override
   void initState() {
@@ -803,6 +804,22 @@ class _ExtrasDialogState extends State<_ExtrasDialog> {
                     ),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                for (final suggestion in _tipPercentageSuggestions) ...[
+                  Expanded(
+                    child: _SuggestionChip(
+                      label: '${suggestion.toInt()}%',
+                      selected: pct == suggestion,
+                      onTap: () => _onTipPctChanged(suggestion),
+                    ),
+                  ),
+                  if (suggestion != _tipPercentageSuggestions.last)
+                    const SizedBox(width: 6),
+                ],
               ],
             ),
             Opacity(

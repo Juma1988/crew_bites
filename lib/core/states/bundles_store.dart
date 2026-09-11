@@ -2,11 +2,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/restaurant_group.dart';
 
+import '../services/shared_preferences_service.dart';
 import '../values/app_values.dart';
 
 /// Restaurant bundle list load/save/edit (no UI).
 abstract final class BundlesStore {
-  static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
+  static Future<SharedPreferences> _prefs() =>
+      SharedPreferencesService.instance.get();
 
   static Future<List<RestaurantGroup>> load([
     SharedPreferences? prefs,
@@ -32,6 +34,10 @@ abstract final class BundlesStore {
             itemPrices: Map<String, double>.from(savedGroup.itemPrices),
             emoji: savedGroup.emoji.isNotEmpty ? savedGroup.emoji : seed.emoji,
             colorValue: savedGroup.colorValue,
+            defaultTax: savedGroup.defaultTax,
+            defaultService: savedGroup.defaultService,
+            defaultDelivery: savedGroup.defaultDelivery,
+            defaultTip: savedGroup.defaultTip,
           ),
         );
       }
@@ -70,19 +76,15 @@ abstract final class BundlesStore {
   }
 
   static List<RestaurantGroup> pillsOnly(List<RestaurantGroup> groups) {
-    return groups
-        .where((g) => g.id != RestaurantGroup.freeformId)
-        .toList();
+    return groups.where((g) => g.id != RestaurantGroup.freeformId).toList();
   }
 
   /// Write unit prices onto every bundle that lists those foods.
   /// [prices] keys are food titles (any case); values ≤ 0 are skipped.
-  /// Optionally force-update [preferGroupId] even when other groups also match.
   static List<RestaurantGroup> applyItemPrices(
     List<RestaurantGroup> groups,
-    Map<String, double> prices, {
-    String? preferGroupId,
-  }) {
+    Map<String, double> prices,
+  ) {
     if (prices.isEmpty) return groups;
     final normalized = <String, double>{
       for (final e in prices.entries)

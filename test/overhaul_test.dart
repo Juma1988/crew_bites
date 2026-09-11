@@ -110,6 +110,36 @@ void main() {
     expect(find.text('تم الحفظ ✓'), findsOneWidget);
   });
 
+  testWidgets('summary paid control updates and persists the current session',
+      (tester) async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+    final session = OrderSession(
+      id: 's_paid_toggle',
+      createdAt: now,
+      people: const [Person(id: 'p1', name: 'Ali', colorValue: 0xFF000000)],
+      lines: const [
+        OrderLine(id: 'l1', personId: 'p1', title: 'Koshary'),
+      ],
+    );
+    await OrderStore.saveCurrent(session, prefs);
+
+    await tester.pumpWidget(const App101());
+    await tester.pumpAndSettle();
+    AppNavigator.key.currentState!.pushNamed(
+      OutputHistoryPage.route,
+      arguments: OutputHistoryArgs(session: session),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('علّم إنه دفع'), findsOneWidget);
+    await tester.tap(find.byType(Checkbox).last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('دفع'), findsOneWidget);
+    expect((await OrderStore.loadCurrent(prefs))?.isPersonPaid('p1'), isTrue);
+  });
+
   testWidgets('settings accordion expands one section on a single tap',
       (tester) async {
     await tester.pumpWidget(const App101());

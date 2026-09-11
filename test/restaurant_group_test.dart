@@ -19,6 +19,7 @@ void main() {
         defaultTax: const ExtrasField(percent: 14, usePercent: true),
         defaultService: const ExtrasField(percent: 12, usePercent: true),
         defaultDelivery: const ExtrasField(amount: 10),
+        defaultTip: const ExtrasField(percent: 10, usePercent: true),
         isBuiltIn: false,
       );
 
@@ -37,6 +38,8 @@ void main() {
       expect(decoded.defaultTax.usePercent, isTrue);
       expect(decoded.defaultService.percent, 12);
       expect(decoded.defaultDelivery.amount, 10);
+      expect(decoded.defaultTip.percent, 10);
+      expect(decoded.defaultTip.usePercent, isTrue);
       expect(decoded.isBuiltIn, isFalse);
     });
 
@@ -99,6 +102,26 @@ void main() {
       expect(RestaurantGroup.decodeList(''), isEmpty);
       expect(RestaurantGroup.decodeList('NOT JSON'), isEmpty);
     });
+  });
+
+  test('copyWith preserves and replaces defaultTip', () {
+    const group = RestaurantGroup(
+      id: 'g',
+      nameEn: 'Test',
+      nameAr: 'Test',
+      items: [],
+      colorValue: 0xFF000000,
+      defaultTip: ExtrasField(amount: 5),
+    );
+
+    expect(group.copyWith().defaultTip.amount, 5);
+    expect(
+        group
+            .copyWith(
+                defaultTip: const ExtrasField(percent: 10, usePercent: true))
+            .defaultTip
+            .percent,
+        10);
   });
 
   group('RestaurantGroup.migrateId', () {

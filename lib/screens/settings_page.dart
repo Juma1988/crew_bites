@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_haptics.dart';
 import '../core/changelog.dart';
 import '../core/friend_icon_style.dart';
 import '../core/legal_config.dart';
+import '../core/services/shared_preferences_service.dart';
 import '../core/states/app_settings.dart';
 import '../core/theme.dart';
 import '../core/translate.dart';
@@ -138,7 +138,7 @@ Additional details:
     required ColorPalette selected,
   }) async {
     AppHaptics.selectionClick();
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferencesService.instance.get();
     final neonUnlocked = prefs.getBool(AppValues.prefsNeonUnlocked) ?? false;
     final palettes = ColorPalette.values
         .where((p) => p != ColorPalette.neon || neonUnlocked)

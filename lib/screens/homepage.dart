@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/app_haptics.dart';
 import '../core/debug/debug_registry.dart';
 import '../core/friend_icon_style.dart';
+import '../core/services/shared_preferences_service.dart';
 import '../core/states/app_settings.dart';
 import '../core/states/order_store.dart';
 import '../core/theme.dart';
@@ -67,7 +68,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _load({bool animate = true}) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferencesService.instance.get();
     void onCorrupt() => AppSettings.instance.notePrefsCorrupt();
     final current = await OrderStore.loadCurrent(prefs, onCorrupt);
     if (!mounted) return;

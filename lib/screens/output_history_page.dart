@@ -1,12 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/app_haptics.dart';
 import '../core/debug/debug_registry.dart';
 import '../core/friend_icon_style.dart';
+import '../core/order_qr_payload.dart';
+import '../core/services/shared_preferences_service.dart';
 import '../core/states/app_settings.dart';
 import '../core/states/bundles_store.dart';
 import '../core/states/crew_store.dart';
@@ -80,7 +84,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
       _fromHistory = args.fromHistory;
       _current = args.session;
       _ready = true;
-      SharedPreferences.getInstance().then((p) {
+      SharedPreferencesService.instance.get().then((p) {
         if (!mounted) return;
         _neonUnlocked = p.getBool(AppValues.prefsNeonUnlocked) ?? false;
         BundlesStore.load(p).then((groups) {
@@ -103,7 +107,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
   }
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferencesService.instance.get();
     _neonUnlocked = prefs.getBool(AppValues.prefsNeonUnlocked) ?? false;
     final session = await OrderStore.loadCurrent(
       prefs,
@@ -204,6 +208,79 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     AppHaptics.mediumImpact();
     await SharePlus.instance.share(
       ShareParams(text: _formatSummary(session)),
+    );
+  }
+
+  Future<void> _setPaid(String personId, bool paid) async {
+    final session = _current;
+    if (session == null || _fromHistory) return;
+    final paidByPerson = Map<String, bool>.from(session.paidByPerson);
+    if (paid) {
+      paidByPerson[personId] = true;
+    } else {
+      paidByPerson.remove(personId);
+    }
+    final updated = session.copyWith(paidByPerson: paidByPerson);
+    setState(() => _current = updated);
+    await OrderStore.saveCurrent(updated, _prefs);
+  }
+
+  Future<void> _showQr(OrderSession session) async {
+    AppHaptics.mediumImpact();
+    final link = OrderQrPayload.encode(session);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+        ),
+        title: Text(t.orderQrTitle),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Semantics(
+                label: t.orderQrTitle,
+                image: true,
+                child: Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(12),
+                  child: QrImageView(data: link, size: 220),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(t.orderQrBody, textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text(
+                t.orderQrPrivacy,
+                textAlign: TextAlign.center,
+                style: Theme.of(dialogContext).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              SelectableText(link, textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: link));
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(t.orderLinkCopied)),
+                );
+              }
+            },
+            child: Text(t.copyOrderLink),
+          ),
+          FilledButton.icon(
+            onPressed: () => SharePlus.instance.share(ShareParams(text: link)),
+            icon: const Icon(Icons.ios_share_rounded),
+            label: Text(t.shareOrderLink),
+          ),
+        ],
+      ),
     );
   }
 
@@ -497,7 +574,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     if (_unlocking) return;
     _unlocking = true;
     _neonUnlocked = true;
-    final prefs = _prefs ?? await SharedPreferences.getInstance();
+    final prefs = _prefs ?? await SharedPreferencesService.instance.get();
     await prefs.setBool(AppValues.prefsNeonUnlocked, true);
     AppHaptics.heavyImpact();
     if (!mounted) return;
@@ -753,6 +830,14 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                                             )
                                                           : null,
                                                       session: current,
+                                                      isPaid: current
+                                                          .isPersonPaid(p.id),
+                                                      onPaidChanged:
+                                                          _fromHistory
+                                                              ? null
+                                                              : (paid) =>
+                                                                  _setPaid(p.id,
+                                                                      paid),
                                                       roundTotals: _roundTotals(
                                                           pricesOn),
                                                     ),
@@ -806,6 +891,13 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                             ),
                                           ],
                                         ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      FilledButton.tonalIcon(
+                                        onPressed: () => _showQr(current),
+                                        icon:
+                                            const Icon(Icons.qr_code_2_rounded),
+                                        label: Text(strings.shareOrderQr),
                                       ),
                                       const SizedBox(height: 10),
                                       if (_fromHistory)
@@ -995,6 +1087,8 @@ class _PersonBlock extends StatelessWidget {
     required this.lines,
     required this.emptyLabel,
     required this.session,
+    required this.isPaid,
+    this.onPaidChanged,
     this.showPrices = false,
     this.totalLabel,
     this.extrasShare = 0,
@@ -1008,6 +1102,8 @@ class _PersonBlock extends StatelessWidget {
   final bool showPrices;
   final String? totalLabel;
   final OrderSession session;
+  final bool isPaid;
+  final ValueChanged<bool>? onPaidChanged;
   final bool roundTotals;
 
   /// Share of all extras for this person (0 when none).
@@ -1139,6 +1235,26 @@ class _PersonBlock extends StatelessWidget {
               ),
             ),
           ],
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  t.paidStatusLabel(isPaid),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: isPaid ? scheme.primary : scheme.onSurfaceVariant,
+                    fontWeight: isPaid ? FontWeight.w700 : null,
+                  ),
+                ),
+              ),
+              Checkbox(
+                value: isPaid,
+                onChanged: onPaidChanged == null
+                    ? null
+                    : (value) => onPaidChanged!(value ?? false),
+              ),
+            ],
+          ),
         ],
       ),
     );
