@@ -4,14 +4,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:app_101/core/states/app_settings.dart';
 import 'package:app_101/core/app_navigator.dart';
+import 'package:app_101/core/states/bundles_store.dart';
 import 'package:app_101/core/states/order_store.dart';
-import 'package:app_101/app.dart';
+import 'package:app_101/main.dart';
 import 'package:app_101/models/order_models.dart';
 import 'package:app_101/models/output_args.dart';
 import 'package:app_101/screens/output_history_page.dart';
 import 'package:app_101/widgets/summary_onboarding.dart';
 import 'package:app_101/widgets/orders_onboarding.dart';
 import 'package:app_101/widgets/onboarding_overlay.dart';
+import 'package:app_101/models/restaurant_group.dart';
+import 'package:app_101/screens/add_orders_page.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -97,7 +100,8 @@ void main() {
 
     await tester.ensureVisible(find.byIcon(Icons.playlist_add_rounded));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.playlist_add_rounded), warnIfMissed: false);
+    await tester.tap(find.byIcon(Icons.playlist_add_rounded),
+        warnIfMissed: false);
     await tester.pumpAndSettle();
 
     expect(find.text('سمّي الباقة'), findsWidgets);
@@ -106,5 +110,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('selecting a bundle applies its saved tip default',
+      (tester) async {
+    await AppSettings.instance.setLocaleCode('en');
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+    final session = OrderSession(
+      id: 's_tip_default',
+      createdAt: now,
+      updatedAt: now,
+      people: const [
+        Person(id: 'p1', name: 'Ali', emoji: '😎', colorValue: 0xFF4D96FF),
+      ],
+      lines: const [],
+    );
+    await OrderStore.saveCurrent(session, prefs);
+    await BundlesStore.save([
+      const RestaurantGroup(
+        id: 'custom_tip',
+        nameEn: 'Tip Restaurant',
+        nameAr: 'Tip Restaurant',
+        items: ['Koshary'],
+        colorValue: 0xFF4D96FF,
+        defaultTip: ExtrasField(amount: 12),
+      ),
+    ], prefs);
+
+    await tester.pumpWidget(const App101());
+    await tester.pump();
+    AppNavigator.key.currentState!.pushNamed(AddOrdersPage.route);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tip Restaurant'));
+    await tester.pumpAndSettle();
+
+    final updated = await OrderStore.loadCurrent(prefs);
+    expect(updated?.tip.amount, 12);
   });
 }

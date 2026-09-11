@@ -19,6 +19,7 @@ void main() {
         defaultTax: const ExtrasField(percent: 14, usePercent: true),
         defaultService: const ExtrasField(percent: 12, usePercent: true),
         defaultDelivery: const ExtrasField(amount: 10),
+        defaultTip: const ExtrasField(percent: 10, usePercent: true),
         isBuiltIn: false,
       );
 
@@ -37,6 +38,8 @@ void main() {
       expect(decoded.defaultTax.usePercent, isTrue);
       expect(decoded.defaultService.percent, 12);
       expect(decoded.defaultDelivery.amount, 10);
+      expect(decoded.defaultTip.percent, 10);
+      expect(decoded.defaultTip.usePercent, isTrue);
       expect(decoded.isBuiltIn, isFalse);
     });
 
@@ -69,12 +72,20 @@ void main() {
     test('encodeList/decodeList round-trip', () {
       final groups = [
         const RestaurantGroup(
-          id: 'g1', nameEn: 'A', nameAr: 'أ', items: ['X'],
-          colorValue: 0xFF000001, isBuiltIn: true,
+          id: 'g1',
+          nameEn: 'A',
+          nameAr: 'أ',
+          items: ['X'],
+          colorValue: 0xFF000001,
+          isBuiltIn: true,
         ),
         const RestaurantGroup(
-          id: 'g2', nameEn: 'B', nameAr: 'ب', items: ['Y', 'Z'],
-          colorValue: 0xFF000002, isBuiltIn: false,
+          id: 'g2',
+          nameEn: 'B',
+          nameAr: 'ب',
+          items: ['Y', 'Z'],
+          colorValue: 0xFF000002,
+          isBuiltIn: false,
           itemPrices: {'y': 10},
         ),
       ];
@@ -91,6 +102,26 @@ void main() {
       expect(RestaurantGroup.decodeList(''), isEmpty);
       expect(RestaurantGroup.decodeList('NOT JSON'), isEmpty);
     });
+  });
+
+  test('copyWith preserves and replaces defaultTip', () {
+    const group = RestaurantGroup(
+      id: 'g',
+      nameEn: 'Test',
+      nameAr: 'Test',
+      items: [],
+      colorValue: 0xFF000000,
+      defaultTip: ExtrasField(amount: 5),
+    );
+
+    expect(group.copyWith().defaultTip.amount, 5);
+    expect(
+        group
+            .copyWith(
+                defaultTip: const ExtrasField(percent: 10, usePercent: true))
+            .defaultTip
+            .percent,
+        10);
   });
 
   group('RestaurantGroup.migrateId', () {
@@ -115,10 +146,23 @@ void main() {
     });
   });
 
+  test('built-in seeds include starter menus', () {
+    final seeds = RestaurantGroup.builtInSeeds();
+    final wemby = seeds.firstWhere((g) => g.id == RestaurantGroup.wembyId);
+    final aboFars = seeds.firstWhere((g) => g.id == RestaurantGroup.aboFarsId);
+
+    expect(wemby.items, containsAll(['Burger', 'Fries', 'Cola']));
+    expect(aboFars.items, containsAll(['Shawarma', 'Falafel', 'Garlic sauce']));
+    expect(wemby.isBuiltIn, isTrue);
+    expect(aboFars.isBuiltIn, isTrue);
+  });
+
   group('RestaurantGroup.withItemPrices', () {
     test('merges prices for existing items only', () {
       final group = const RestaurantGroup(
-        id: 'g', nameEn: 'Test', nameAr: 'Test',
+        id: 'g',
+        nameEn: 'Test',
+        nameAr: 'Test',
         items: ['Koshary', 'Soup'],
         colorValue: 0xFF000000,
         itemPrices: {},
@@ -133,7 +177,9 @@ void main() {
 
     test('skips zero/negative prices', () {
       final group = const RestaurantGroup(
-        id: 'g', nameEn: 'Test', nameAr: 'Test',
+        id: 'g',
+        nameEn: 'Test',
+        nameAr: 'Test',
         items: ['Koshary'],
         colorValue: 0xFF000000,
       );
@@ -143,7 +189,9 @@ void main() {
 
     test('returns same instance when no changes', () {
       final group = const RestaurantGroup(
-        id: 'g', nameEn: 'Test', nameAr: 'Test',
+        id: 'g',
+        nameEn: 'Test',
+        nameAr: 'Test',
         items: ['Koshary'],
         colorValue: 0xFF000000,
         itemPrices: {'koshary': 40},
@@ -156,7 +204,9 @@ void main() {
   group('RestaurantGroup.priceForItem', () {
     test('returns price for known item, 0 for unknown', () {
       final group = const RestaurantGroup(
-        id: 'g', nameEn: 'Test', nameAr: 'Test',
+        id: 'g',
+        nameEn: 'Test',
+        nameAr: 'Test',
         items: [],
         colorValue: 0xFF000000,
         itemPrices: {'koshary': 40},
@@ -189,7 +239,8 @@ void main() {
     test('hasValue returns true when usePercent with valid percent', () {
       expect(const ExtrasField(percent: 14, usePercent: true).hasValue, isTrue);
       expect(const ExtrasField(percent: 0, usePercent: true).hasValue, isFalse);
-      expect(const ExtrasField(percent: null, usePercent: true).hasValue, isFalse);
+      expect(
+          const ExtrasField(percent: null, usePercent: true).hasValue, isFalse);
     });
 
     test('hasValue returns true when fixed amount > 0', () {

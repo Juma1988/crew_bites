@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/default.dart';
 import '../../models/order_models.dart';
+import '../services/shared_preferences_service.dart';
 import '../values/app_values.dart';
 import 'order_store.dart';
 
@@ -58,7 +59,7 @@ class CrewStore extends ChangeNotifier {
   }
 
   Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferencesService.instance.get();
     await _loadCustom(prefs);
     await _loadFavorites(prefs);
 
@@ -156,7 +157,7 @@ class CrewStore extends ChangeNotifier {
   }
 
   Future<void> persistCustom([SharedPreferences? prefs]) async {
-    final p = prefs ?? await SharedPreferences.getInstance();
+    final p = prefs ?? await SharedPreferencesService.instance.get();
     final all = <String>{...colors.keys, ...emojis.keys};
     final list = all
         .map(
@@ -171,7 +172,7 @@ class CrewStore extends ChangeNotifier {
   }
 
   Future<void> persistFavorites([SharedPreferences? prefs]) async {
-    final p = prefs ?? await SharedPreferences.getInstance();
+    final p = prefs ?? await SharedPreferencesService.instance.get();
     await p.setString(
       AppValues.prefsFavorites,
       jsonEncode(favorites.toList()),
@@ -309,7 +310,7 @@ class CrewStore extends ChangeNotifier {
 
   /// Reset roster to starter names (Alex/Sam/Jordan). Settings clear.
   Future<void> clearCustomPeople() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferencesService.instance.get();
     await prefs.remove(AppValues.prefsCustomRoster);
     colors.clear();
     emojis.clear();

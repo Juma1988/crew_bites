@@ -16,6 +16,7 @@ class RestaurantGroup {
     this.defaultTax = const ExtrasField(),
     this.defaultService = const ExtrasField(),
     this.defaultDelivery = const ExtrasField(),
+    this.defaultTip = const ExtrasField(),
     this.isBuiltIn = false,
   });
 
@@ -35,6 +36,7 @@ class RestaurantGroup {
   final ExtrasField defaultTax;
   final ExtrasField defaultService;
   final ExtrasField defaultDelivery;
+  final ExtrasField defaultTip;
 
   final bool isBuiltIn;
 
@@ -79,6 +81,7 @@ class RestaurantGroup {
     ExtrasField? defaultTax,
     ExtrasField? defaultService,
     ExtrasField? defaultDelivery,
+    ExtrasField? defaultTip,
     bool? isBuiltIn,
   }) {
     return RestaurantGroup(
@@ -92,6 +95,7 @@ class RestaurantGroup {
       defaultTax: defaultTax ?? this.defaultTax,
       defaultService: defaultService ?? this.defaultService,
       defaultDelivery: defaultDelivery ?? this.defaultDelivery,
+      defaultTip: defaultTip ?? this.defaultTip,
       isBuiltIn: isBuiltIn ?? this.isBuiltIn,
     );
   }
@@ -125,8 +129,11 @@ class RestaurantGroup {
         'items': items,
         if (itemPrices.isNotEmpty) 'itemPrices': itemPrices,
         if (defaultTax.hasValue) 'defaultTax': _extrasToJson(defaultTax),
-        if (defaultService.hasValue) 'defaultService': _extrasToJson(defaultService),
-        if (defaultDelivery.hasValue) 'defaultDelivery': _extrasToJson(defaultDelivery),
+        if (defaultService.hasValue)
+          'defaultService': _extrasToJson(defaultService),
+        if (defaultDelivery.hasValue)
+          'defaultDelivery': _extrasToJson(defaultDelivery),
+        if (defaultTip.hasValue) 'defaultTip': _extrasToJson(defaultTip),
         'isBuiltIn': isBuiltIn,
       };
 
@@ -146,9 +153,8 @@ class RestaurantGroup {
   }
 
   factory RestaurantGroup.fromJson(Map<String, dynamic> json) {
-    final en = (json['nameEn'] as String?) ??
-        (json['name'] as String?) ??
-        'Bundle';
+    final en =
+        (json['nameEn'] as String?) ?? (json['name'] as String?) ?? 'Bundle';
     final ar = (json['nameAr'] as String?) ?? en;
     final rawPrices = json['itemPrices'];
     final prices = <String, double>{};
@@ -168,8 +174,11 @@ class RestaurantGroup {
           .toList(),
       itemPrices: prices,
       defaultTax: _extrasFromJson(json['defaultTax'] as Map<String, dynamic>?),
-      defaultService: _extrasFromJson(json['defaultService'] as Map<String, dynamic>?),
-      defaultDelivery: _extrasFromJson(json['defaultDelivery'] as Map<String, dynamic>?),
+      defaultService:
+          _extrasFromJson(json['defaultService'] as Map<String, dynamic>?),
+      defaultDelivery:
+          _extrasFromJson(json['defaultDelivery'] as Map<String, dynamic>?),
+      defaultTip: _extrasFromJson(json['defaultTip'] as Map<String, dynamic>?),
       isBuiltIn: json['isBuiltIn'] as bool? ?? false,
     );
   }
@@ -220,10 +229,27 @@ class RestaurantGroup {
     };
   }
 
-  /// Built-in bundle seeds. New users start empty — only Freeform ships.
-  /// Legacy ids (Wemby / Abo fars) are still migrated for old saved prefs.
+  /// Built-in bundle seeds. Menus stay intentionally short and editable.
   static List<RestaurantGroup> builtInSeeds() => [
         freeform(),
+        const RestaurantGroup(
+          id: wembyId,
+          nameEn: 'Wemby',
+          nameAr: 'ويمبي',
+          emoji: '🍔',
+          colorValue: 0xFFFF6B4A,
+          items: ['Burger', 'Fries', 'Cola'],
+          isBuiltIn: true,
+        ),
+        const RestaurantGroup(
+          id: aboFarsId,
+          nameEn: 'Abo Fars',
+          nameAr: 'أبو فارس',
+          emoji: '🌯',
+          colorValue: 0xFF2D6A4F,
+          items: ['Shawarma', 'Falafel', 'Garlic sauce'],
+          isBuiltIn: true,
+        ),
       ];
 
   /// Bundles shown as pills (excludes freeform).

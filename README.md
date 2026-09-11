@@ -72,8 +72,13 @@ Perfect for:
 ### 📤 Sharing Options
 - Copy order summary as text
 - Share via messaging apps
-- Save as PDF for records
+- Share an offline QR code containing the order
 - Create reusable bundles from any order
+
+### ✅ Collection Tracking
+- Mark each person's share as paid
+- Favorite recurring orders for quick reuse
+- Filter history to show favorite orders
 
 ---
 
@@ -192,7 +197,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ## 💬 Support
 
-- **Email**: [Support Email](mailto:support@crewbites.app)
+- **Email**: [Support Email](mailto:i1988.support@gmail.com)
 - **GitHub Issues**: [Report a Bug](https://github.com/Juma1988/crew_bites/issues)
 
 ---

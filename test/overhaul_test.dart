@@ -9,7 +9,7 @@ import 'package:app_101/core/states/crew_store.dart';
 import 'package:app_101/core/states/order_store.dart';
 import 'package:app_101/core/translate.dart';
 import 'package:app_101/core/values/app_values.dart';
-import 'package:app_101/app.dart';
+import 'package:app_101/main.dart';
 import 'package:app_101/models/order_models.dart';
 import 'package:app_101/models/output_args.dart';
 import 'package:app_101/models/restaurant_group.dart';
@@ -110,6 +110,48 @@ void main() {
     expect(find.text('تم الحفظ ✓'), findsOneWidget);
   });
 
+  testWidgets('summary paid control updates and persists the current session',
+      (tester) async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+    final session = OrderSession(
+      id: 's_paid_toggle',
+      createdAt: now,
+      people: const [Person(id: 'p1', name: 'Ali', colorValue: 0xFF000000)],
+      lines: const [
+        OrderLine(id: 'l1', personId: 'p1', title: 'Koshary', price: 100),
+      ],
+    );
+    await OrderStore.saveCurrent(session, prefs);
+
+    await tester.pumpWidget(const App101());
+    await tester.pumpAndSettle();
+    AppNavigator.key.currentState!.pushNamed(
+      OutputHistoryPage.route,
+      arguments: OutputHistoryArgs(session: session),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('الباقي للدفع: 100'), findsOneWidget);
+    expect(find.byTooltip('علّم إنه دفع. دوس مرتين على الكارت للتغيير'),
+        findsOneWidget);
+    await tester.tap(find.text('Ali').first);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.text('Ali').first);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byTooltip('دفع. دوس مرتين على الكارت للتغيير'),
+        matching: find.byIcon(Icons.check_rounded),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('دفع. دوس مرتين على الكارت للتغيير'), findsOneWidget);
+    expect(find.textContaining('الباقي للدفع: 0'), findsOneWidget);
+    expect((await OrderStore.loadCurrent(prefs))?.isPersonPaid('p1'), isTrue);
+  });
+
   testWidgets('settings accordion expands one section on a single tap',
       (tester) async {
     await tester.pumpWidget(const App101());
@@ -200,7 +242,7 @@ void main() {
     expect(find.text('نصيبك'), findsWidgets);
   });
 
-  testWidgets('bundle pill drops the emoji and title-cases the name',
+  testWidgets('bundle pill shows a food emoji and title-cases the name',
       (tester) async {
     await AppSettings.instance.setLocaleCode('en');
     final prefs = await SharedPreferences.getInstance();
@@ -305,7 +347,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.playlist_add_rounded), findsOneWidget);
     expect(find.byIcon(Icons.update_rounded), findsNothing);
-    expect(find.byIcon(Icons.copy_rounded), findsNothing);
+    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -359,7 +401,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.update_rounded), findsOneWidget);
     expect(find.byIcon(Icons.playlist_add_rounded), findsNothing);
-    expect(find.byIcon(Icons.copy_rounded), findsNothing);
+    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -412,7 +454,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.update_rounded), findsNothing);
     expect(find.byIcon(Icons.playlist_add_rounded), findsNothing);
-    expect(find.byIcon(Icons.copy_rounded), findsNothing);
+    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

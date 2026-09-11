@@ -352,11 +352,15 @@ class _AddUserPageState extends State<AddUserPage> {
       updatedAt: DateTime.now(),
       people: people,
       lines: lines,
-      groupId: existing?.groupId,
-      groupName: existing?.groupName,
-      // Keep menu unit prices when revisiting People → Next (C2).
-      foodPrices: Map<String, double>.from(existing?.foodPrices ?? const {}),
-    );
+       groupId: existing?.groupId,
+       groupName: existing?.groupName,
+       // Keep menu unit prices when revisiting People → Next (C2).
+       foodPrices: Map<String, double>.from(existing?.foodPrices ?? const {}),
+       tip: existing?.tip ?? const ExtrasField(),
+       delivery: existing?.delivery ?? const ExtrasField(),
+       tax: existing?.tax ?? const ExtrasField(),
+       service: existing?.service ?? const ExtrasField(),
+     );
 
     await OrderStore.saveCurrent(session);
     if (!mounted) return;
@@ -368,7 +372,7 @@ class _AddUserPageState extends State<AddUserPage> {
     final strings = t;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    if (AppSettings.instance.debugOverlayEnabled) {
+    if (DebugRegistry.enabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         DebugRegistry.currentFile.value = 'lib/screens/add_user_page.dart';
       });

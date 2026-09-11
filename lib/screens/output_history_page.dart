@@ -1,11 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/app_haptics.dart';
+import '../core/debug/debug_registry.dart';
 import '../core/friend_icon_style.dart';
+import '../core/order_qr_payload.dart';
+import '../core/services/shared_preferences_service.dart';
 import '../core/states/app_settings.dart';
 import '../core/states/bundles_store.dart';
 import '../core/states/crew_store.dart';
@@ -13,16 +18,15 @@ import '../core/states/order_store.dart';
 import '../core/theme.dart';
 import '../core/translate.dart';
 import '../core/values/app_values.dart';
-import '../core/debug/debug_registry.dart';
 import '../models/order_models.dart';
 import '../models/output_args.dart';
 import '../models/restaurant_group.dart';
 import '../widgets/section_card.dart';
 import '../widgets/summary_onboarding.dart';
 import '../widgets/wizard_step_bar.dart';
-import 'homepage.dart';
 import 'add_orders_page.dart';
 import 'add_user_page.dart';
+import 'homepage.dart';
 
 /// Final order page: whole-order item totals → who ordered what → save.
 /// Pass [OutputHistoryArgs] to open a past history session (F01).
@@ -34,6 +38,22 @@ class OutputHistoryPage extends StatefulWidget {
 
   @override
   State<OutputHistoryPage> createState() => _OutputHistoryPageState();
+}
+
+class _WholeOrderFood {
+  const _WholeOrderFood({
+    required this.title,
+    required this.qty,
+    required this.unitPrice,
+    this.note,
+  });
+
+  final String title;
+  final int qty;
+  final double unitPrice;
+  final String? note;
+
+  double get lineTotal => unitPrice * qty;
 }
 
 class _OutputHistoryPageState extends State<OutputHistoryPage> {
@@ -64,7 +84,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
       _fromHistory = args.fromHistory;
       _current = args.session;
       _ready = true;
-      SharedPreferences.getInstance().then((p) {
+      SharedPreferencesService.instance.get().then((p) {
         if (!mounted) return;
         _neonUnlocked = p.getBool(AppValues.prefsNeonUnlocked) ?? false;
         BundlesStore.load(p).then((groups) {
@@ -87,7 +107,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
   }
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferencesService.instance.get();
     _neonUnlocked = prefs.getBool(AppValues.prefsNeonUnlocked) ?? false;
     final session = await OrderStore.loadCurrent(
       prefs,
@@ -126,6 +146,26 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
   bool _roundTotals(bool pricesOn) =>
       pricesOn && AppSettings.instance.roundTotals;
 
+  List<_WholeOrderFood> _wholeOrderFoods(OrderSession session) {
+    final grouped = <String, _WholeOrderFood>{};
+    for (final line in session.lines) {
+      final note = line.note.trim();
+      final key = '${line.title.toLowerCase()}\u0000${note.toLowerCase()}';
+      final previous = grouped[key];
+      grouped[key] = _WholeOrderFood(
+        title: previous?.title ?? line.title,
+        qty: (previous?.qty ?? 0) + line.qty,
+        unitPrice:
+            (previous?.unitPrice ?? 0) > 0 ? previous!.unitPrice : line.price,
+        note: note.isEmpty ? null : note,
+      );
+    }
+    final foods = grouped.values.toList();
+    final withoutNotes = foods.where((food) => food.note == null);
+    final withNotes = foods.where((food) => food.note != null);
+    return [...withoutNotes, ...withNotes];
+  }
+
   String _formatSummary(OrderSession session) {
     final pricesOn = AppSettings.instance.pricesEnabled;
     final roundTotals = _roundTotals(pricesOn);
@@ -134,8 +174,9 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     if (session.hasPlace) buf.writeln(session.groupName);
     buf.writeln('────────────');
     buf.writeln(t.orderItemsTitle);
-    for (final a in session.aggregateFoods()) {
-      buf.writeln(t.foodUnitsLine(a.title, a.qty));
+    for (final a in _wholeOrderFoods(session)) {
+      final note = a.note == null ? '' : ' (${a.note})';
+      buf.writeln('${a.qty} | ${t.foodTitle(a.title)}$note');
     }
     buf.writeln('────────────');
     buf.writeln(t.whoOrderedTitle);
@@ -167,6 +208,79 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     AppHaptics.mediumImpact();
     await SharePlus.instance.share(
       ShareParams(text: _formatSummary(session)),
+    );
+  }
+
+  Future<void> _setPaid(String personId, bool paid) async {
+    final session = _current;
+    if (session == null || _fromHistory) return;
+    final paidByPerson = Map<String, bool>.from(session.paidByPerson);
+    if (paid) {
+      paidByPerson[personId] = true;
+    } else {
+      paidByPerson.remove(personId);
+    }
+    final updated = session.copyWith(paidByPerson: paidByPerson);
+    setState(() => _current = updated);
+    await OrderStore.saveCurrent(updated, _prefs);
+  }
+
+  Future<void> _showQr(OrderSession session) async {
+    AppHaptics.mediumImpact();
+    final link = OrderQrPayload.encode(session);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+        ),
+        title: Text(t.orderQrTitle),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Semantics(
+                label: t.orderQrTitle,
+                image: true,
+                child: Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(12),
+                  child: QrImageView(data: link, size: 220),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(t.orderQrBody, textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text(
+                t.orderQrPrivacy,
+                textAlign: TextAlign.center,
+                style: Theme.of(dialogContext).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              SelectableText(link, textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: link));
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(t.orderLinkCopied)),
+                );
+              }
+            },
+            child: Text(t.copyOrderLink),
+          ),
+          FilledButton.icon(
+            onPressed: () => SharePlus.instance.share(ShareParams(text: link)),
+            icon: const Icon(Icons.ios_share_rounded),
+            label: Text(t.shareOrderLink),
+          ),
+        ],
+      ),
     );
   }
 
@@ -460,7 +574,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     if (_unlocking) return;
     _unlocking = true;
     _neonUnlocked = true;
-    final prefs = _prefs ?? await SharedPreferences.getInstance();
+    final prefs = _prefs ?? await SharedPreferencesService.instance.get();
     await prefs.setBool(AppValues.prefsNeonUnlocked, true);
     AppHaptics.heavyImpact();
     if (!mounted) return;
@@ -493,16 +607,17 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     final strings = t;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    if (AppSettings.instance.debugOverlayEnabled) {
+    if (DebugRegistry.enabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        DebugRegistry.currentFile.value = 'lib/screens/output_history_page.dart';
+        DebugRegistry.currentFile.value =
+            'lib/screens/output_history_page.dart';
       });
     }
 
     return ListenableBuilder(
       listenable: AppSettings.instance,
       builder: (context, _) {
-          final pricesOn = AppSettings.instance.pricesEnabled;
+        final pricesOn = AppSettings.instance.pricesEnabled;
 
         if (!_ready) {
           return Scaffold(
@@ -614,7 +729,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                           ),
                                           const SizedBox(height: 10),
                                         ],
-                                        if (current.aggregateFoods().isEmpty)
+                                        if (_wholeOrderFoods(current).isEmpty)
                                           Text(
                                             strings.emptyOrder,
                                             style: theme.textTheme.bodyMedium
@@ -624,7 +739,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                           )
                                         else
                                           for (final a
-                                              in current.aggregateFoods()) ...[
+                                              in _wholeOrderFoods(current)) ...[
                                             // Form: [ 2  Eggs     14 ] — qty, name, total
                                             _OrderItemRow(
                                               title: strings.foodTitle(a.title),
@@ -634,6 +749,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                                   ? strings
                                                       .formatAmount(a.lineTotal)
                                                   : null,
+                                              noteLabel: a.note,
                                             ),
                                             const SizedBox(height: 8),
                                           ],
@@ -662,9 +778,36 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                       final orderedPeople =
                                           current.peopleWithOrders;
                                       final showMoney = pricesOn;
+                                      final roundTotals =
+                                          _roundTotals(pricesOn);
+                                      final remainingToPay = current
+                                              .grandTotal -
+                                          orderedPeople
+                                              .where((p) =>
+                                                  current.isPersonPaid(p.id))
+                                              .fold<double>(
+                                                0,
+                                                (sum, p) =>
+                                                    sum +
+                                                    current.personGrandTotalFor(
+                                                      p.id,
+                                                      round: roundTotals,
+                                                    ),
+                                              );
                                       return SectionCard(
                                         key: _whoOrderedKey,
                                         title: strings.whoOrderedTitle,
+                                        titleTrailing: showMoney
+                                            ? Text(
+                                                '${strings.remainingToPay}: ${strings.money(remainingToPay.clamp(0, double.infinity).toDouble())}',
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  color:
+                                                      scheme.onSurfaceVariant,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              )
+                                            : null,
                                         child: orderedPeople.isEmpty
                                             ? Text(
                                                 strings.emptyOrder,
@@ -679,44 +822,52 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.stretch,
                                                 children: [
-                                                   for (final (i, p)
-                                                       in orderedPeople
-                                                           .indexed) ...[
-                                                     _PersonBlock(
-                                                       person: p,
-                                                       index: i,
-                                                       lines: current
-                                                           .linesFor(p.id),
-                                                       emptyLabel:
-                                                           strings.emptyOrder,
-                                                       showPrices: pricesOn,
-                                                       extrasShare: pricesOn
-                                                           ? current
-                                                               .personExtrasShareFor(
-                                                               p.id,
-                                                               round:
-                                                                   _roundTotals(
-                                                                 pricesOn,
-                                                               ),
-                                                             )
-                                                           : 0,
-                                                       totalLabel: showMoney
-                                                           ? strings
-                                                               .personTotalLabel(
-                                                               current
-                                                                   .personGrandTotalFor(
-                                                                 p.id,
-                                                                 round:
-                                                                     _roundTotals(
-                                                                   pricesOn,
-                                                                 ),
-                                                               ),
-                                                             )
-                                                           : null,
-                                                       session: current,
-                                                       roundTotals:
-                                                           _roundTotals(pricesOn),
-                                                     ),
+                                                  for (final (i, p)
+                                                      in orderedPeople
+                                                          .indexed) ...[
+                                                    _PersonBlock(
+                                                      person: p,
+                                                      index: i,
+                                                      lines: current
+                                                          .linesFor(p.id),
+                                                      emptyLabel:
+                                                          strings.emptyOrder,
+                                                      showPrices: pricesOn,
+                                                      extrasShare: pricesOn
+                                                          ? current
+                                                              .personExtrasShareFor(
+                                                              p.id,
+                                                              round:
+                                                                  _roundTotals(
+                                                                pricesOn,
+                                                              ),
+                                                            )
+                                                          : 0,
+                                                      totalLabel: showMoney
+                                                          ? strings
+                                                              .personTotalLabel(
+                                                              current
+                                                                  .personGrandTotalFor(
+                                                                p.id,
+                                                                round:
+                                                                    _roundTotals(
+                                                                  pricesOn,
+                                                                ),
+                                                              ),
+                                                            )
+                                                          : null,
+                                                      session: current,
+                                                      isPaid: current
+                                                          .isPersonPaid(p.id),
+                                                      onPaidChanged:
+                                                          _fromHistory
+                                                              ? null
+                                                              : (paid) =>
+                                                                  _setPaid(p.id,
+                                                                      paid),
+                                                      roundTotals: _roundTotals(
+                                                          pricesOn),
+                                                    ),
                                                     const SizedBox(height: 12),
                                                   ],
                                                 ],
@@ -769,6 +920,13 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                         ],
                                       ),
                                       const SizedBox(height: 10),
+                                      FilledButton.tonalIcon(
+                                        onPressed: () => _showQr(current),
+                                        icon:
+                                            const Icon(Icons.qr_code_2_rounded),
+                                        label: Text(strings.shareOrderQr),
+                                      ),
+                                      const SizedBox(height: 10),
                                       if (_fromHistory)
                                         FilledButton.tonalIcon(
                                           onPressed: () => _orderAgain(current),
@@ -794,7 +952,7 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                     ),
                   ),
                 ),
-                             ],
+              ],
             ),
           ),
         );
@@ -810,12 +968,14 @@ class _OrderItemRow extends StatelessWidget {
     required this.qtyLabel,
     required this.showPrice,
     this.priceLabel,
+    this.noteLabel,
   });
 
   final String title;
   final String qtyLabel;
   final bool showPrice;
   final String? priceLabel;
+  final String? noteLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -834,9 +994,11 @@ class _OrderItemRow extends StatelessWidget {
     );
 
     return Semantics(
-      label: showPrice && priceLabel != null
-          ? '$qtyLabel $title $priceLabel'
-          : '$qtyLabel $title',
+      label: [
+        '$qtyLabel $title',
+        if (noteLabel != null) noteLabel!,
+        if (showPrice && priceLabel != null) priceLabel!,
+      ].join(', '),
       child: Container(
         constraints: const BoxConstraints(minHeight: 48),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -850,19 +1012,31 @@ class _OrderItemRow extends StatelessWidget {
             Text(qtyLabel, style: qtyStyle),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: nameStyle,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: nameStyle,
+                  ),
+                  if (noteLabel != null)
+                    Text(
+                      noteLabel!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                ],
               ),
             ),
             if (showPrice) ...[
               const SizedBox(width: 12),
-              Text(
-                priceLabel ?? '0',
-                style: priceStyle,
-              ),
+              Text(priceLabel ?? '0', style: priceStyle),
             ],
           ],
         ),
@@ -940,6 +1114,8 @@ class _PersonBlock extends StatelessWidget {
     required this.lines,
     required this.emptyLabel,
     required this.session,
+    required this.isPaid,
+    this.onPaidChanged,
     this.showPrices = false,
     this.totalLabel,
     this.extrasShare = 0,
@@ -953,6 +1129,8 @@ class _PersonBlock extends StatelessWidget {
   final bool showPrices;
   final String? totalLabel;
   final OrderSession session;
+  final bool isPaid;
+  final ValueChanged<bool>? onPaidChanged;
   final bool roundTotals;
 
   /// Share of all extras for this person (0 when none).
@@ -967,124 +1145,155 @@ class _PersonBlock extends StatelessWidget {
     final mark = friendIconMark(person, iconStyle, index);
     final isEmoji = friendUsesEmoji(person, iconStyle);
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: person.color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: BorderDirectional(
-          start: BorderSide(color: person.color, width: 4),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: person.color.withValues(alpha: 0.25),
-                child: Text(
-                  mark,
-                  style: TextStyle(
-                    fontSize: isEmoji ? 14 : 10,
-                    fontWeight: FontWeight.w800,
-                    color: isEmoji ? null : person.color,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(person.name, style: theme.textTheme.titleSmall),
-              ),
-              if (totalLabel != null)
-                Text(
-                  totalLabel!,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: scheme.primary,
-                  ),
-                ),
-            ],
+    final paidColor = Colors.green.shade600;
+    final paidMuted = scheme.onSurfaceVariant.withValues(alpha: 0.52);
+
+    return GestureDetector(
+      onDoubleTap: onPaidChanged == null ? null : () => onPaidChanged!(!isPaid),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: person.color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: BorderDirectional(
+            start: BorderSide(color: person.color, width: 4),
           ),
-          const SizedBox(height: 6),
-          if (lines.isEmpty)
-            Text(
-              emptyLabel,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-            )
-          else
-            ...lines.map((l) {
-              final name = t.foodTitle(l.title);
-              final note = l.note.isEmpty ? '' : ' — ${l.note}';
-              // Same form as Whole order: `2  Eggs` [, price]
-              return Padding(
-                padding: const EdgeInsets.only(top: 4),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Tooltip(
+                  message:
+                      '${t.paidStatusLabel(isPaid)}. ${t.doubleTapToToggle}',
+                  child: Semantics(
+                    button: false,
+                    label: '${person.name}, ${t.paidStatusLabel(isPaid)}',
+                    child: InkWell(
+                      onTap: null,
+                      borderRadius: BorderRadius.circular(24),
+                      child: CircleAvatar(
+                        radius: 14,
+                        backgroundColor: isPaid
+                            ? paidColor.withValues(alpha: 0.16)
+                            : person.color.withValues(alpha: 0.25),
+                        child: isPaid
+                            ? Icon(Icons.check_rounded,
+                                size: 18, color: paidColor)
+                            : Text(
+                                mark,
+                                style: TextStyle(
+                                  fontSize: isEmoji ? 14 : 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: isEmoji ? null : person.color,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    person.name,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: isPaid ? paidMuted : null,
+                    ),
+                  ),
+                ),
+                if (totalLabel != null)
+                  Text(
+                    totalLabel!,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: isPaid ? paidMuted : scheme.primary,
+                      decoration: isPaid ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            if (lines.isEmpty)
+              Text(
+                emptyLabel,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isPaid ? paidMuted : scheme.onSurfaceVariant,
+                ),
+              )
+            else
+              ...lines.map((l) {
+                final name = t.foodTitle(l.title);
+                final note = l.note.isEmpty ? '' : ' — ${l.note}';
+                // Same form as Whole order: `2  Eggs` [, price]
+                return Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${l.qty}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: isPaid ? paidMuted : scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '$name$note',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: isPaid ? paidMuted : null,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (showPrices) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          t.formatAmount(l.lineTotal),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: isPaid ? paidMuted : scheme.primary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }),
+            if (showPrices && extrasShare > 0) ...[
+              const SizedBox(height: 6),
+              GestureDetector(
+                onTap: () => _showExtrasInfo(context),
                 child: Row(
                   children: [
                     Text(
-                      '${l.qty}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      t.extrasShareHint,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isPaid ? paidMuted : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: isPaid ? paidMuted : scheme.primary,
+                    ),
+                    const Spacer(),
+                    Text(
+                      t.formatAmount(extrasShare),
+                      style: theme.textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: scheme.onSurfaceVariant,
+                        color: isPaid ? paidMuted : scheme.primary,
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        '$name$note',
-                        style: theme.textTheme.bodyMedium,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (showPrices) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        t.formatAmount(l.lineTotal),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: scheme.primary,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
-              );
-            }),
-          if (showPrices && extrasShare > 0) ...[
-            const SizedBox(height: 6),
-            GestureDetector(
-              onTap: () => _showExtrasInfo(context),
-              child: Row(
-                children: [
-                  Text(
-                    t.extrasShareHint,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 16,
-                    color: scheme.primary,
-                  ),
-                  const Spacer(),
-                  Text(
-                    t.formatAmount(extrasShare),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: scheme.primary,
-                    ),
-                  ),
-                ],
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -1100,10 +1309,28 @@ class _PersonBlock extends StatelessWidget {
     final serviceShare = session.personServiceShare(pId);
 
     final items = <(IconData, String, String)>[];
-    if (tipShare > 0) items.add((Icons.attach_money_rounded, t.tipLabel, t.formatAmount(tipShare)));
-    if (deliveryShare > 0) items.add((Icons.local_shipping_rounded, t.deliveryLabel, t.formatAmount(deliveryShare)));
-    if (taxShare > 0) items.add((Icons.receipt_long_rounded, t.taxLabel, t.formatAmount(taxShare)));
-    if (serviceShare > 0) items.add((Icons.handshake_rounded, t.serviceLabel, t.formatAmount(serviceShare)));
+    if (tipShare > 0) {
+      items.add(
+          (Icons.attach_money_rounded, t.tipLabel, t.formatAmount(tipShare)));
+    }
+    if (deliveryShare > 0) {
+      items.add((
+        Icons.local_shipping_rounded,
+        t.deliveryLabel,
+        t.formatAmount(deliveryShare)
+      ));
+    }
+    if (taxShare > 0) {
+      items.add(
+          (Icons.receipt_long_rounded, t.taxLabel, t.formatAmount(taxShare)));
+    }
+    if (serviceShare > 0) {
+      items.add((
+        Icons.handshake_rounded,
+        t.serviceLabel,
+        t.formatAmount(serviceShare)
+      ));
+    }
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1119,7 +1346,8 @@ class _PersonBlock extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.receipt_rounded, size: 16, color: scheme.onInverseSurface),
+                Icon(Icons.receipt_rounded,
+                    size: 16, color: scheme.onInverseSurface),
                 const SizedBox(width: 8),
                 Text(
                   '${person.name} — ${t.extrasShareHint}',
@@ -1134,7 +1362,9 @@ class _PersonBlock extends StatelessWidget {
             for (final (i, item) in items.indexed) ...[
               Row(
                 children: [
-                  Icon(item.$1, size: 14, color: scheme.onInverseSurface.withValues(alpha: 0.7)),
+                  Icon(item.$1,
+                      size: 14,
+                      color: scheme.onInverseSurface.withValues(alpha: 0.7)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(

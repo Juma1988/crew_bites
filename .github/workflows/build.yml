@@ -8,13 +8,18 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.27.0"
+          flutter-version: "3.47.1"
           channel: stable
           cache: true
 
@@ -27,8 +32,14 @@ jobs:
       - name: Test
         run: flutter test
 
+      - name: Validate Fastlane configuration
+        run: |
+          ruby -c fastlane/Fastfile
+          ruby -c fastlane/Appfile
+          bundle exec fastlane lanes
+
       - name: Build Android APK
         run: flutter build apk --debug
 
       - name: Build iOS (no codesign)
-        run: flutter build ios --debug --no-codesign
+        run: flutter build ios --no-codesign

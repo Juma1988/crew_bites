@@ -9,7 +9,7 @@ import 'debug_registry.dart';
 /// copies the current page's relative dart path to the clipboard so it can be
 /// pasted straight into the agent.
 ///
-/// Lives at the app root (mounted in `app.dart`), so it stays above navigation
+/// Lives at the app root (mounted in `main.dart`), so it stays above navigation
 /// transitions and respects SafeArea.
 class DebugOverlay extends StatelessWidget {
   const DebugOverlay({super.key, required this.enabled, required this.child});

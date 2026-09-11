@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 
 import 'friend_icon_style.dart';
 import 'states/app_settings.dart';
@@ -66,6 +67,17 @@ class Translate {
 
   String get historyEmpty =>
       _tr('No past orders yet.', 'لسه مفيش طلبات قديمة.');
+
+  String get favoriteOrders => _tr('Favorites', 'المفضلة');
+
+  String get allOrders => _tr('All orders', 'كل الطلبات');
+
+  String get favoriteOrder => _tr('Favorite order', 'طلب مفضل');
+
+  String get unfavoriteOrder => _tr('Remove from favorites', 'شيل من المفضلة');
+
+  String get favoriteOrdersEmpty =>
+      _tr('No favorite orders yet.', 'لسه مفيش طلبات مفضلة.');
 
   String get noPeopleYet => _tr('Nobody yet', 'لسه مفيش حد');
 
@@ -169,6 +181,11 @@ class Translate {
   String get itemRequired => _tr('What food?', 'إيه الأكل؟');
 
   String get itemNote => _tr('Note (optional)', 'ملاحظة (اختياري)');
+
+  String get noteHint => _tr('e.g. no onions', 'مثال: من غير بصل');
+
+  String get assignBeforeNote => _tr('Add this food first, then add a note.',
+      'ضيف الأكل الأول، وبعدين اكتب الملاحظة.');
 
   String get ordersTitle => _tr('Who ordered what?', 'مين طلب إيه؟');
 
@@ -319,6 +336,15 @@ class Translate {
   String get save => _tr('Save', 'احفظ');
   String get confirmAction => _tr('Confirm', 'تأكيد');
 
+  String get discardChangesTitle => _tr('Discard changes?', 'تجاهل التغييرات؟');
+
+  String get discardChangesBody => _tr(
+        'You have unsaved add-on changes.',
+        'عندك تغييرات في الإضافات لسه متحفظتش.',
+      );
+
+  String get discardChanges => _tr('Discard', 'تجاهل');
+
   String get personName => _tr('Name', 'الاسم');
 
   String get personEmoji => _tr('Emoji', 'إيموجي');
@@ -348,6 +374,14 @@ class Translate {
       _tr('Each food and how many', 'كل أكلة وكم واحدة');
 
   String get whoOrderedTitle => _tr('Who ordered what', 'مين طلب إيه');
+
+  String get remainingToPay => _tr('Left to pay', 'الباقي للدفع');
+
+  String paidStatusLabel(bool paid) =>
+      paid ? _tr('Paid', 'دفع') : _tr('Mark as paid', 'علّم إنه دفع');
+
+  String get doubleTapToToggle =>
+      _tr('Double-tap the card to change', 'دوس مرتين على الكارت للتغيير');
 
   String foodUnitsLine(String food, int qty, {double? unitPrice}) {
     final title = foodTitle(food);
@@ -394,6 +428,26 @@ class Translate {
   String get buildBundleUpdated => _tr('Bundle updated ✓', 'الباقة اتعدّلت ✓');
 
   String get shareSummary => _tr('Share', 'شارك');
+
+  String get shareOrderQr => _tr('Share order QR', 'شارك QR الطلب');
+
+  String get orderQrTitle => _tr('Share this order', 'شارك الطلب ده');
+
+  String get orderQrBody => _tr(
+        'Scan this QR code in Crew Bites to share the order offline.',
+        'امسح الكود ده في Crew Bites عشان تشارك الطلب من غير إنترنت.',
+      );
+
+  String get orderQrPrivacy => _tr(
+        'This code contains the order details. Nothing is sent to a server.',
+        'الكود فيه تفاصيل الطلب. مفيش حاجة بتتبعت لسيرفر.',
+      );
+
+  String get copyOrderLink => _tr('Copy link', 'انسخ اللينك');
+
+  String get shareOrderLink => _tr('Share link', 'شارك اللينك');
+
+  String get orderLinkCopied => _tr('Order link copied', 'لينك الطلب اتنسخ');
 
   String get tipLabel => _tr('Tip', 'بقشيش');
 
@@ -496,8 +550,15 @@ class Translate {
 
   String get grandTotalBreakdown => _tr('Add-ons breakdown', 'تفاصيل الإضافات');
 
-  String grandTotalLabel(double amount) =>
-      _tr('Grand total ${money(amount)}', 'الإجمالي ${money(amount)}');
+  String grandTotalLabel(double amount, [double? addons]) {
+    if (addons == null) {
+      return _tr('Grand total ${money(amount)}', 'الإجمالي ${money(amount)}');
+    }
+    return _tr(
+      'Grand total ${money(amount)} (${money(addons)})',
+      'الإجمالي ${money(amount)} (${money(addons)})',
+    );
+  }
 
   String get copiedToast => _tr('Copied ✓', 'اتنسخ ✓');
 
@@ -568,8 +629,7 @@ class Translate {
         FriendIconStyle.firstTwo => _tr('First two letters', 'أول حرفين'),
       };
 
-  String get settingsExtrasSplit =>
-      _tr('Split add-ons', 'تقسيم الإضافات');
+  String get settingsExtrasSplit => _tr('Split add-ons', 'تقسيم الإضافات');
 
   String get extrasSplitBody => _tr(
         'Split even gives everyone an equal share. By order value splits proportionally to each person\'s food total.',
@@ -589,8 +649,17 @@ class Translate {
       );
 
   String formatAmount(double price) {
-    if (price == price.roundToDouble()) return price.round().toString();
-    return price.toStringAsFixed(2);
+    final localeName = locale.toLanguageTag();
+    final formatter = NumberFormat.decimalPattern(localeName);
+    if (price == price.roundToDouble()) {
+      formatter.maximumFractionDigits = 0;
+    } else {
+      formatter.minimumFractionDigits = 2;
+      formatter.maximumFractionDigits = 2;
+    }
+    // Keep the app's established western-digit Arabic presentation while
+    // using the locale's decimal pattern and the selected currency label.
+    return formatter.format(price);
   }
 
   String money(double price, {bool hideZero = false}) {

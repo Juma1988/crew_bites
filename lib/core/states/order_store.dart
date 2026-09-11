@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/order_models.dart';
+import '../services/shared_preferences_service.dart';
 import '../values/app_values.dart';
 
 /// Order session + history load/save (no UI / setState).
@@ -12,7 +13,8 @@ abstract final class OrderStore {
   static const historyKey = AppValues.prefsHistory;
   static const maxHistory = AppValues.maxHistory;
 
-  static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
+  static Future<SharedPreferences> _prefs() =>
+      SharedPreferencesService.instance.get();
 
   static Future<OrderSession?> loadCurrent([
     SharedPreferences? prefs,
@@ -81,10 +83,12 @@ abstract final class OrderStore {
       groupId: session.groupId,
       groupName: session.groupName,
       foodPrices: Map<String, double>.from(session.foodPrices),
+      paidByPerson: Map<String, bool>.from(session.paidByPerson),
       tip: session.tip,
       delivery: session.delivery,
       tax: session.tax,
       service: session.service,
+      isFavorite: session.isFavorite,
     );
     await saveCurrent(restored, p);
   }
@@ -103,6 +107,23 @@ abstract final class OrderStore {
         jsonEncode(capped.map((e) => e.toJson()).toList()),
       );
     }
+  }
+
+  /// Update one saved history entry without changing its position.
+  static Future<List<OrderSession>> setHistoryFavorite(
+    String sessionId,
+    bool isFavorite,
+    List<OrderSession> existing, [
+    SharedPreferences? prefs,
+  ]) async {
+    final next = [
+      for (final session in existing)
+        session.id == sessionId
+            ? session.copyWith(isFavorite: isFavorite)
+            : session,
+    ];
+    await saveHistory(next, prefs);
+    return next;
   }
 
   /// Put [session] at front of history (dedupe by id, cap max).
@@ -209,6 +230,24 @@ abstract final class OrderStore {
       foodPrices: prices,
       updatedAt: DateTime.now(),
     );
+  }
+
+  /// Set a note for one person's food line.
+  static OrderSession setFoodNote(
+    OrderSession session,
+    String personId,
+    String foodTitle,
+    String note,
+  ) {
+    final key = foodTitle.toLowerCase();
+    final lines = [
+      for (final line in session.lines)
+        if (line.personId == personId && line.title.toLowerCase() == key)
+          line.copyWith(note: note.trim())
+        else
+          line,
+    ];
+    return session.copyWith(lines: lines, updatedAt: DateTime.now());
   }
 
   /// Format number for display (no currency symbol — numbers only).

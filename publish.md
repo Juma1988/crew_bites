@@ -30,7 +30,7 @@ Perfect for friend gatherings, office lunches, or family dinners — no account 
 ✓ Last 3 orders saved in history
 ✓ Arabic and English bilingual support
 ✓ Spotlight tips on first visit
-✓ Share as PDF or plain text
+✓ Share as plain text
 ✓ Extras — tip and delivery as food items
 ✓ 100% offline — no sign-up, no tracking
 

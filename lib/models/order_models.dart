@@ -35,7 +35,8 @@ class ExtrasField {
   }
 
   bool get hasValue =>
-      (usePercent && percent != null && percent! > 0) || (!usePercent && amount > 0);
+      (usePercent && percent != null && percent! > 0) ||
+      (!usePercent && amount > 0);
 
   ExtrasField copyWith({
     double? amount,
@@ -202,10 +203,12 @@ class OrderSession {
     this.groupId,
     this.groupName,
     this.foodPrices = const {},
+    this.paidByPerson = const {},
     this.tip = const ExtrasField(),
     this.delivery = const ExtrasField(),
-    this.tax = const ExtrasField(percent: 14, usePercent: true),
-    this.service = const ExtrasField(percent: 12, usePercent: true),
+    this.tax = const ExtrasField(),
+    this.service = const ExtrasField(),
+    this.isFavorite = false,
   });
 
   final String id;
@@ -223,21 +226,29 @@ class OrderSession {
   /// Unit price per food title (lowercased key). Used for menu + new lines.
   final Map<String, double> foodPrices;
 
+  /// Whether each person has paid their share. Missing ids are unpaid.
+  final Map<String, bool> paidByPerson;
+
   /// Tip field (fixed amount or % of food subtotal). Split evenly.
   final ExtrasField tip;
 
   /// Delivery fee (always fixed). Split evenly.
   final ExtrasField delivery;
 
-  /// Tax (default 14%). Split by order value.
+  /// Tax, disabled by default. Split by order value.
   final ExtrasField tax;
 
-  /// Service charge (default 12%). Split by order value.
+  /// Service charge, disabled by default. Split by order value.
   final ExtrasField service;
+
+  /// Whether this offline order is a favorite for quick reuse.
+  final bool isFavorite;
 
   bool get isEmpty => people.isEmpty && lines.isEmpty;
   bool get hasContent => people.isNotEmpty || lines.isNotEmpty;
   int get itemCount => lines.fold(0, (sum, l) => sum + l.qty);
+
+  bool isPersonPaid(String personId) => paidByPerson[personId] ?? false;
 
   /// Food subtotal only (no extras).
   double get orderTotal => lines.fold(0.0, (sum, l) => sum + l.lineTotal);
@@ -296,12 +307,10 @@ class OrderSession {
   }
 
   /// Tip share for [personId] (split evenly).
-  double personTipShare(String personId) =>
-      _evenShare(effectiveTip);
+  double personTipShare(String personId) => _evenShare(effectiveTip);
 
   /// Delivery share for [personId] (split evenly).
-  double personDeliveryShare(String personId) =>
-      _evenShare(effectiveDelivery);
+  double personDeliveryShare(String personId) => _evenShare(effectiveDelivery);
 
   /// Tax share for [personId] (split by order value).
   double personTaxShare(String personId) =>
@@ -328,7 +337,9 @@ class OrderSession {
     required bool round,
   }) {
     if (!round) return personExtrasShare(personId);
-    return roundedGrandTotals()[personId] ?? personExtrasShare(personId);
+    final roundedGrandTotal = roundedGrandTotals()[personId];
+    if (roundedGrandTotal == null) return personExtrasShare(personId);
+    return roundedGrandTotal - personTotal(personId);
   }
 
   /// Grand total for [personId], rounded to a whole unit when [round] is true.
@@ -416,10 +427,12 @@ class OrderSession {
     String? groupId,
     String? groupName,
     Map<String, double>? foodPrices,
+    Map<String, bool>? paidByPerson,
     ExtrasField? tip,
     ExtrasField? delivery,
     ExtrasField? tax,
     ExtrasField? service,
+    bool? isFavorite,
     bool clearGroup = false,
   }) {
     return OrderSession(
@@ -431,10 +444,12 @@ class OrderSession {
       groupId: clearGroup ? null : (groupId ?? this.groupId),
       groupName: clearGroup ? null : (groupName ?? this.groupName),
       foodPrices: foodPrices ?? this.foodPrices,
+      paidByPerson: paidByPerson ?? this.paidByPerson,
       tip: tip ?? this.tip,
       delivery: delivery ?? this.delivery,
       tax: tax ?? this.tax,
       service: service ?? this.service,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 
@@ -447,10 +462,12 @@ class OrderSession {
         groupId: groupId,
         groupName: groupName,
         foodPrices: Map<String, double>.from(foodPrices),
+        paidByPerson: Map<String, bool>.from(paidByPerson),
         tip: tip,
         delivery: delivery,
         tax: tax,
         service: service,
+        isFavorite: isFavorite,
       );
 
   Map<String, dynamic> toJson() => {
@@ -462,10 +479,12 @@ class OrderSession {
         if (groupId != null) 'groupId': groupId,
         if (groupName != null) 'groupName': groupName,
         if (foodPrices.isNotEmpty) 'foodPrices': foodPrices,
+        if (paidByPerson.isNotEmpty) 'paidByPerson': paidByPerson,
         'tip': tip.toJson(),
         'delivery': delivery.toJson(),
         'tax': tax.toJson(),
         'service': service.toJson(),
+        'isFavorite': isFavorite,
       };
 
   String encode() => jsonEncode(toJson());
@@ -478,6 +497,13 @@ class OrderSession {
         prices[k.toString().toLowerCase()] = (v as num).toDouble();
       });
     }
+    final paid = <String, bool>{};
+    final rawPaid = json['paidByPerson'];
+    if (rawPaid is Map) {
+      rawPaid.forEach((k, v) {
+        if (v is bool) paid[k.toString()] = v;
+      });
+    }
 
     // Backward compat: old format had flat tipAmount/tipPercent/deliveryFee.
     ExtrasField tip;
@@ -486,9 +512,9 @@ class OrderSession {
     ExtrasField service;
     if (json.containsKey('tip') && json['tip'] is Map) {
       tip = ExtrasField.fromJson(json['tip'] as Map<String, dynamic>);
-      delivery = ExtrasField.fromJson(json['delivery'] as Map<String, dynamic>);
-      tax = ExtrasField.fromJson(json['tax'] as Map<String, dynamic>);
-      service = ExtrasField.fromJson(json['service'] as Map<String, dynamic>);
+      delivery = _extrasFieldFromJson(json['delivery']);
+      tax = _extrasFieldFromJson(json['tax']);
+      service = _extrasFieldFromJson(json['service']);
     } else {
       final oldTipAmount = (json['tipAmount'] as num?)?.toDouble() ?? 0;
       final oldTipPercent = (json['tipPercent'] as num?)?.toDouble();
@@ -499,8 +525,8 @@ class OrderSession {
         usePercent: oldTipPercent != null && oldTipPercent > 0,
       );
       delivery = ExtrasField(amount: oldDelivery);
-      tax = const ExtrasField(percent: 14, usePercent: true);
-      service = const ExtrasField(percent: 12, usePercent: true);
+      tax = const ExtrasField();
+      service = const ExtrasField();
     }
 
     return OrderSession(
@@ -518,11 +544,21 @@ class OrderSession {
       groupId: json['groupId'] as String?,
       groupName: json['groupName'] as String?,
       foodPrices: prices,
+      paidByPerson: paid,
       tip: tip,
       delivery: delivery,
       tax: tax,
       service: service,
+      isFavorite: json['isFavorite'] as bool? ?? false,
     );
+  }
+
+  static ExtrasField _extrasFieldFromJson(Object? raw) {
+    if (raw is Map<String, dynamic>) return ExtrasField.fromJson(raw);
+    if (raw is Map) {
+      return ExtrasField.fromJson(Map<String, dynamic>.from(raw));
+    }
+    return const ExtrasField();
   }
 
   static OrderSession? decode(String? raw) {

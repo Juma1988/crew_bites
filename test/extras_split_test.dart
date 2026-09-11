@@ -122,6 +122,23 @@ void main() {
       expect(sum, grand);
     });
 
+    test('rounded extras share excludes the food subtotal', () {
+      final roundedExtras = [
+        for (final p in s.people)
+          s.personExtrasShareFor(p.id, round: true),
+      ];
+
+      expect(roundedExtras.every((value) => value >= 0), isTrue);
+      expect(roundedExtras.fold(0.0, (a, b) => a + b), s.totalExtras);
+      for (var i = 0; i < s.people.length; i++) {
+        expect(
+          roundedExtras[i],
+          s.personGrandTotalFor(s.people[i].id, round: true) -
+              s.personTotal(s.people[i].id),
+        );
+      }
+    });
+
     test('unrounded mode keeps fractional shares', () {
       // tip=30/4=7.5 per person (no tax/service in this session)
       final sNoTax = OrderSession(

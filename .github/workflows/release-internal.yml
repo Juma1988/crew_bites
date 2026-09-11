@@ -9,7 +9,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -18,7 +18,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.27.0"
+          flutter-version: "3.47.1"
           channel: stable
           cache: true
 
@@ -28,8 +28,17 @@ jobs:
       - name: Test
         run: flutter test
 
+      - name: Validate Fastlane configuration
+        run: |
+          ruby -c fastlane/Fastfile
+          ruby -c fastlane/Appfile
+          bundle exec fastlane lanes
+
       - name: Decode keystore
         run: echo "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" | base64 -d > android/keystore/upload-keystore.jks
+
+      - name: Verify signing key
+        run: test -s android/keystore/upload-keystore.jks
 
       - name: Create key.properties
         run: |
@@ -39,6 +48,12 @@ jobs:
           keyAlias=${{ secrets.SIGNING_KEY_ALIAS }}
           storeFile=keystore/upload-keystore.jks
           EOF
+
+      - name: Build signed release bundle
+        run: flutter build appbundle --release
+
+      - name: Verify release signature
+        run: jarsigner -verify -verbose build/app/outputs/bundle/release/app-release.aab
 
       - name: Deploy to internal
         run: bundle exec fastlane deploy_internal

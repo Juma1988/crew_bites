@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_101/core/states/app_settings.dart';
 import 'package:app_101/core/theme.dart';
 import 'package:app_101/core/translate.dart';
-import 'package:app_101/app.dart';
+import 'package:app_101/main.dart';
 import 'package:app_101/models/order_models.dart';
 import 'package:app_101/models/output_args.dart';
 

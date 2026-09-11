@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:app_101/core/theme.dart';
 import 'package:app_101/core/translate.dart';
 import 'package:app_101/core/states/order_store.dart';
+import 'package:app_101/core/debug/debug_registry.dart';
 
 /// Dialog to fill unit prices for foods that still have price ≤ 0.
 class MissingPricesDialog extends StatefulWidget {
@@ -15,6 +16,7 @@ class MissingPricesDialog extends StatefulWidget {
 
   final List<String> foods;
   final Translate t;
+
   /// Lowercase title → suggested unit price (from bundle).
   final Map<String, double> initialPrices;
 
@@ -89,6 +91,12 @@ class _MissingPricesDialogState extends State<MissingPricesDialog> {
 
   @override
   Widget build(BuildContext context) {
+    if (DebugRegistry.enabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        DebugRegistry.currentFile.value =
+            'lib/screens/add_orders/widgets/missing_prices_dialog.dart';
+      });
+    }
     return AlertDialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusCard),

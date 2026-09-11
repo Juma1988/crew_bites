@@ -60,7 +60,7 @@
       "source.fixAll": "explicit",
       "source.organizeImports": "always"
     },
-      "editor.inlayHints.enabled": "off"
+    "editor.inlayHints.enabled": "off"
   },
 
   "[yaml]": {
@@ -70,18 +70,16 @@
 
   // Spell checker: ignore project-specific words
   "cSpell.words": [
+    "debuggable",
+    "fars",
+    "friendIconMark",
+    "friendIconStyle",
+    "friendUsesEmoji",
+    "onboarding",
     "prefs",
     "Prefs",
-    "Wemby",
-    "fars",
-    "debuggable",
-    "onboarding",
     "prefsCorruptToast",
-    "friendIconStyle",
-    "friendIconMark",
-    "friendUsesEmoji"
+    "Wemby",
+    "مختلط"
   ]
-
 }
-
-

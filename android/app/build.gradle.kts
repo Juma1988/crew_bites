@@ -45,18 +45,6 @@ android {
 
     buildTypes {
         release {
-            // Fail closed: never ship a release signed with the debug key.
-            check(keystorePropertiesFile.exists()) {
-                "Missing android/key.properties — cannot sign release. " +
-                    "Copy key.properties.example and set upload keystore paths."
-            }
-            val storePath = keystoreProperties["storeFile"] as String?
-            check(!storePath.isNullOrBlank()) {
-                "key.properties missing storeFile"
-            }
-            check(rootProject.file(storePath).exists()) {
-                "Upload keystore not found: $storePath"
-            }
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
@@ -64,6 +52,26 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+    }
+}
+
+// Build-type configuration runs for every Gradle invocation, including debug.
+// Validate the private upload key only when Gradle executes a release task.
+tasks.configureEach {
+    if (name.contains("Release", ignoreCase = true)) {
+        doFirst {
+        check(keystorePropertiesFile.exists()) {
+            "Missing android/key.properties — cannot sign release. " +
+                "Copy key.properties.example and set upload keystore paths."
+        }
+        val storePath = keystoreProperties["storeFile"] as String?
+        check(!storePath.isNullOrBlank()) {
+            "key.properties missing storeFile"
+        }
+        check(rootProject.file(storePath).exists()) {
+            "Upload keystore not found: $storePath"
+        }
         }
     }
 }

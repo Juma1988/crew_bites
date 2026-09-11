@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/app_haptics.dart';
 import '../core/debug/debug_registry.dart';
 import '../core/friend_icon_style.dart';
+import '../core/services/shared_preferences_service.dart';
 import '../core/states/app_settings.dart';
 import '../core/states/order_store.dart';
 import '../core/theme.dart';
@@ -31,8 +32,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage>
-    with TickerProviderStateMixin {
+class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   SharedPreferences? _prefs;
   OrderSession? _current;
   bool _ready = false;
@@ -68,7 +68,7 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _load({bool animate = true}) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferencesService.instance.get();
     void onCorrupt() => AppSettings.instance.notePrefsCorrupt();
     final current = await OrderStore.loadCurrent(prefs, onCorrupt);
     if (!mounted) return;
@@ -128,7 +128,7 @@ class _HomePageState extends State<HomePage>
     final strings = t;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    if (AppSettings.instance.debugOverlayEnabled) {
+    if (DebugRegistry.enabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         DebugRegistry.currentFile.value = 'lib/screens/homepage.dart';
       });
@@ -184,7 +184,9 @@ class _HomePageState extends State<HomePage>
             child: _Blob(
               size: 180,
               color: scheme.primary.withValues(
-                alpha: Theme.of(context).brightness == Brightness.dark ? 0.10 : 0.16,
+                alpha: Theme.of(context).brightness == Brightness.dark
+                    ? 0.10
+                    : 0.16,
               ),
             ),
           ),
@@ -194,7 +196,9 @@ class _HomePageState extends State<HomePage>
             child: _Blob(
               size: 140,
               color: scheme.tertiary.withValues(
-                alpha: Theme.of(context).brightness == Brightness.dark ? 0.08 : 0.12,
+                alpha: Theme.of(context).brightness == Brightness.dark
+                    ? 0.08
+                    : 0.12,
               ),
             ),
           ),
@@ -660,4 +664,3 @@ class _PersonAvatar extends StatelessWidget {
     );
   }
 }
-

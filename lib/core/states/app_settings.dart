@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../friend_icon_style.dart';
+import '../services/shared_preferences_service.dart';
 import '../values/app_values.dart';
 import '../../models/order_models.dart';
 import 'crew_store.dart';
@@ -44,8 +45,8 @@ class AppSettings extends ChangeNotifier {
 
   // ── Last-used extras values (persisted per field) ──────────────────
   ExtrasField _lastTip = const ExtrasField();
-  ExtrasField _lastTax = const ExtrasField(percent: 14, usePercent: true);
-  ExtrasField _lastService = const ExtrasField(percent: 12, usePercent: true);
+  ExtrasField _lastTax = const ExtrasField();
+  ExtrasField _lastService = const ExtrasField();
 
   ExtrasField get lastTip => _lastTip;
   ExtrasField get lastTax => _lastTax;
@@ -68,7 +69,7 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> load() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferencesService.instance.get();
       final raw = prefs.getString(_keyTheme);
       themeMode = switch (raw) {
         'light' => ThemeMode.light,
@@ -93,9 +94,9 @@ class AppSettings extends ChangeNotifier {
       _lastTip = _loadExtrasField(prefs, AppValues.prefsLastTip) ??
           const ExtrasField();
       _lastTax = _loadExtrasField(prefs, AppValues.prefsLastTax) ??
-          const ExtrasField(percent: 14, usePercent: true);
+          const ExtrasField();
       _lastService = _loadExtrasField(prefs, AppValues.prefsLastService) ??
-          const ExtrasField(percent: 12, usePercent: true);
+          const ExtrasField();
     } catch (_) {
       prefsLoadWarning = true;
     }
@@ -117,7 +118,7 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> _saveBool(String key, bool value) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferencesService.instance.get();
       await prefs.setBool(key, value);
     } catch (_) {
       notePrefsCorrupt();
@@ -148,7 +149,7 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> _save(String key, String value) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferencesService.instance.get();
       await prefs.setString(key, value);
     } catch (_) {
       notePrefsCorrupt();
