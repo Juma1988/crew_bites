@@ -375,6 +375,8 @@ class Translate {
 
   String get whoOrderedTitle => _tr('Who ordered what', 'مين طلب إيه');
 
+  String get remainingToPay => _tr('Left to pay', 'الباقي للدفع');
+
   String paidStatusLabel(bool paid) =>
       paid ? _tr('Paid', 'دفع') : _tr('Mark as paid', 'علّم إنه دفع');
 

@@ -119,7 +119,7 @@ void main() {
       createdAt: now,
       people: const [Person(id: 'p1', name: 'Ali', colorValue: 0xFF000000)],
       lines: const [
-        OrderLine(id: 'l1', personId: 'p1', title: 'Koshary'),
+        OrderLine(id: 'l1', personId: 'p1', title: 'Koshary', price: 100),
       ],
     );
     await OrderStore.saveCurrent(session, prefs);
@@ -132,6 +132,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.textContaining('الباقي للدفع: 100'), findsOneWidget);
     expect(find.byTooltip('علّم إنه دفع. دوس مرتين على الكارت للتغيير'),
         findsOneWidget);
     await tester.tap(find.text('Ali').first);
@@ -147,6 +148,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.byTooltip('دفع. دوس مرتين على الكارت للتغيير'), findsOneWidget);
+    expect(find.textContaining('الباقي للدفع: 0'), findsOneWidget);
     expect((await OrderStore.loadCurrent(prefs))?.isPersonPaid('p1'), isTrue);
   });
 

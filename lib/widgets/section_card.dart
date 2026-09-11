@@ -10,6 +10,7 @@ class SectionCard extends StatelessWidget {
     required this.child,
     this.icon,
     this.subtitle,
+    this.titleTrailing,
     this.borderColor,
     this.margin,
   });
@@ -17,6 +18,7 @@ class SectionCard extends StatelessWidget {
   final String title;
   final IconData? icon;
   final String? subtitle;
+  final Widget? titleTrailing;
   final Widget child;
   final Color? borderColor;
   final EdgeInsetsGeometry? margin;
@@ -55,6 +57,7 @@ class SectionCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (titleTrailing != null) titleTrailing!,
             ],
           ),
           if (subtitle != null) ...[

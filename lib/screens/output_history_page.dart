@@ -778,9 +778,36 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                       final orderedPeople =
                                           current.peopleWithOrders;
                                       final showMoney = pricesOn;
+                                      final roundTotals =
+                                          _roundTotals(pricesOn);
+                                      final remainingToPay = current
+                                              .grandTotal -
+                                          orderedPeople
+                                              .where((p) =>
+                                                  current.isPersonPaid(p.id))
+                                              .fold<double>(
+                                                0,
+                                                (sum, p) =>
+                                                    sum +
+                                                    current.personGrandTotalFor(
+                                                      p.id,
+                                                      round: roundTotals,
+                                                    ),
+                                              );
                                       return SectionCard(
                                         key: _whoOrderedKey,
                                         title: strings.whoOrderedTitle,
+                                        titleTrailing: showMoney
+                                            ? Text(
+                                                '${strings.remainingToPay}: ${strings.money(remainingToPay.clamp(0, double.infinity).toDouble())}',
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  color:
+                                                      scheme.onSurfaceVariant,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              )
+                                            : null,
                                         child: orderedPeople.isEmpty
                                             ? Text(
                                                 strings.emptyOrder,
