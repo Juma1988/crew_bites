@@ -39,3 +39,27 @@
 ## 2026-09-11 00:00 — Kira · Testing & QA — Reviewed uncommitted storage, Sentry, defaults, tips, QR, payments, favorites, currency, and CI changes
 - Tested/Found: Flutter tests/analyze and Android debug build passed; release Fastlane path is unverified and statically appears mislocated from repository root.
 - Verified: flutter test; flutter analyze; flutter build apk --debug; flutter run -d emulator-5554 --debug (startup succeeded); Ruby/Fastlane checks blocked because Ruby/bundle are unavailable on this host.
+## 2026-09-11 00:00 — Rei · Publishing — Explained Android release signing setup
+- Released/Changed: No files changed; provided key.properties and keystore recovery instructions
+- Verified: Confirmed repository template, ignored-secret rules, and Gradle signing paths
+## 2026-09-11 00:00 — Rei · Publishing — Explained recovery steps for an already-published Android app
+- Released/Changed: No files changed; documented upload-key recovery and Play Console reset path
+- Verified: Distinguished app-signing key from upload key and matched repository signing configuration
+## 2026-09-11 00:00 — Rei · Publishing — Checked repository for legacy Android signing key
+- Released/Changed: No files changed; searched project keystore and key.properties locations
+- Verified: Only ignored-safe template and backup README exist; original keystore is not present in the repository
+## 2026-09-11 00:00 — Rei · Publishing — Explained missing GitHub signing secrets recovery path
+- Released/Changed: No files changed; documented Play App Signing decision tree
+- Verified: GitHub contains no configured signing secrets; repository intentionally excludes private keys
+## 2026-09-11 00:00 — Rei · Publishing — Updated Play Console key navigation
+- Released/Changed: No files changed; pointed to Protected with Play and Manage Play app signing
+- Verified: Confirmed current Google Play Help navigation and upload-key reset process
+## 2026-09-11 00:00 — Rei · Publishing — Guided upload-key reset submission
+- Released/Changed: No files changed; provided replacement keystore and PEM export steps
+- Verified: Matched alias/path instructions to the project's Android Gradle signing configuration
+## 2026-09-11 00:00 — Rei · Publishing — Simplified upload-key recovery instructions
+- Released/Changed: No files changed; reduced recovery to keystore, PEM certificate, and approval steps
+- Verified: Instructions preserve the Google-held app signing key and match project paths
+## 2026-09-11 00:00 — Rei · Publishing — Listed Android signing backup files
+- Released/Changed: No files changed; documented keystore, certificate, and password backup locations
+- Verified: Current generated files are at project root and key.properties is not yet created

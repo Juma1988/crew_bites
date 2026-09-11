@@ -1118,29 +1118,51 @@ class _PersonBlock extends StatelessWidget {
     final mark = friendIconMark(person, iconStyle, index);
     final isEmoji = friendUsesEmoji(person, iconStyle);
 
+    final paidColor = Colors.green.shade600;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: person.color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: BorderDirectional(
-          start: BorderSide(color: person.color, width: 4),
-        ),
+        border: isPaid
+            ? Border.all(color: paidColor.withValues(alpha: 0.7), width: 2)
+            : BorderDirectional(
+                start: BorderSide(color: person.color, width: 4),
+              ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: person.color.withValues(alpha: 0.25),
-                child: Text(
-                  mark,
-                  style: TextStyle(
-                    fontSize: isEmoji ? 14 : 10,
-                    fontWeight: FontWeight.w800,
-                    color: isEmoji ? null : person.color,
+              Tooltip(
+                message: t.paidStatusLabel(isPaid),
+                child: Semantics(
+                  button: onPaidChanged != null,
+                  label: '${person.name}, ${t.paidStatusLabel(isPaid)}',
+                  child: InkWell(
+                    onTap: onPaidChanged == null
+                        ? null
+                        : () => onPaidChanged!(!isPaid),
+                    borderRadius: BorderRadius.circular(24),
+                    child: CircleAvatar(
+                      radius: 14,
+                      backgroundColor: isPaid
+                          ? paidColor.withValues(alpha: 0.16)
+                          : person.color.withValues(alpha: 0.25),
+                      child: isPaid
+                          ? Icon(Icons.check_rounded,
+                              size: 18, color: paidColor)
+                          : Text(
+                              mark,
+                              style: TextStyle(
+                                fontSize: isEmoji ? 14 : 10,
+                                fontWeight: FontWeight.w800,
+                                color: isEmoji ? null : person.color,
+                              ),
+                            ),
+                    ),
                   ),
                 ),
               ),
@@ -1235,26 +1257,6 @@ class _PersonBlock extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  t.paidStatusLabel(isPaid),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: isPaid ? scheme.primary : scheme.onSurfaceVariant,
-                    fontWeight: isPaid ? FontWeight.w700 : null,
-                  ),
-                ),
-              ),
-              Checkbox(
-                value: isPaid,
-                onChanged: onPaidChanged == null
-                    ? null
-                    : (value) => onPaidChanged!(value ?? false),
-              ),
-            ],
-          ),
         ],
       ),
     );
