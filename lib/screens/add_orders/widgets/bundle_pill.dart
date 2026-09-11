@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:app_101/core/translate.dart';
 import 'package:app_101/models/restaurant_group.dart';
+import 'package:app_101/models/order_models.dart';
 
 class BundlePill extends StatelessWidget {
   const BundlePill({
@@ -24,6 +25,11 @@ class BundlePill extends StatelessWidget {
     final scheme = theme.colorScheme;
     final color = Color(group.colorValue);
     final t = Translate.instance;
+    // Older/custom bundles may have the placeholder icon. Derive a stable
+    // food emoji from the bundle id instead of changing it on every rebuild.
+    final emoji = group.emoji.trim().isEmpty || group.emoji == '🍽️'
+        ? PersonPalette.randomEmoji(_stableSeed(group.id))
+        : group.emoji;
 
     return Semantics(
       button: true,
@@ -43,25 +49,22 @@ class BundlePill extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color: selected ? scheme.primary : color.withValues(alpha: 0.55),
+                color:
+                    selected ? scheme.primary : color.withValues(alpha: 0.55),
                 width: selected ? 2.5 : 1.5,
               ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Text(emoji, style: const TextStyle(fontSize: 18)),
+                const SizedBox(width: 6),
                 Text(
                   label,
                   style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: scheme.onSurface,
                   ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  selected ? Icons.check_rounded : Icons.add_rounded,
-                  size: 18,
-                  color: selected ? scheme.primary : color,
                 ),
               ],
             ),
@@ -70,4 +73,9 @@ class BundlePill extends StatelessWidget {
       ),
     );
   }
+
+  int _stableSeed(String value) => value.codeUnits.fold(
+        0,
+        (sum, codeUnit) => (sum * 31 + codeUnit) & 0x7fffffff,
+      );
 }

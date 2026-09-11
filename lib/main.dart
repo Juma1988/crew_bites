@@ -37,7 +37,7 @@ class App101 extends StatelessWidget {
             return Directionality(
               textDirection: settings.textDirection,
               child: DebugOverlay(
-                enabled: DebugRegistry.enabled,
+                enabled: DebugRegistry.enabled && settings.debugOverlayEnabled,
                 child: child ?? const SizedBox.shrink(),
               ),
             );

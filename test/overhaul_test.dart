@@ -200,7 +200,7 @@ void main() {
     expect(find.text('نصيبك'), findsWidgets);
   });
 
-  testWidgets('bundle pill drops the emoji and title-cases the name',
+  testWidgets('bundle pill shows a food emoji and title-cases the name',
       (tester) async {
     await AppSettings.instance.setLocaleCode('en');
     final prefs = await SharedPreferences.getInstance();
@@ -305,7 +305,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.playlist_add_rounded), findsOneWidget);
     expect(find.byIcon(Icons.update_rounded), findsNothing);
-    expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -359,7 +359,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.update_rounded), findsOneWidget);
     expect(find.byIcon(Icons.playlist_add_rounded), findsNothing);
-    expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -412,7 +412,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.update_rounded), findsNothing);
     expect(find.byIcon(Icons.playlist_add_rounded), findsNothing);
-    expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -28,8 +28,15 @@ void main() {
           Person(id: 'p2', name: 'Sara', emoji: '🙂', colorValue: 0xFFFF6B6B),
         ],
         lines: const [
-          OrderLine(id: 'l1', personId: 'p1', title: 'Koshary', qty: 2, price: 40),
-          OrderLine(id: 'l2', personId: 'p2', title: 'Soup', qty: 1, price: 20, note: 'hot'),
+          OrderLine(
+              id: 'l1', personId: 'p1', title: 'Koshary', qty: 2, price: 40),
+          OrderLine(
+              id: 'l2',
+              personId: 'p2',
+              title: 'Soup',
+              qty: 1,
+              price: 20,
+              note: 'hot'),
         ],
         groupId: 'custom_1',
         groupName: 'Food Court',
@@ -66,8 +73,12 @@ void main() {
       final session = OrderSession(
         id: 's_enc',
         createdAt: DateTime(2025, 1, 1),
-        people: const [Person(id: 'p1', name: 'Test', emoji: '🍕', colorValue: 0xFF000000)],
-        lines: const [OrderLine(id: 'l1', personId: 'p1', title: 'Pizza', qty: 3, price: 50)],
+        people: const [
+          Person(id: 'p1', name: 'Test', emoji: '🍕', colorValue: 0xFF000000)
+        ],
+        lines: const [
+          OrderLine(id: 'l1', personId: 'p1', title: 'Pizza', qty: 3, price: 50)
+        ],
       );
       final encoded = session.encode();
       final decoded = OrderSession.decode(encoded);
@@ -104,8 +115,8 @@ void main() {
       expect(session.tip.percent, 10);
       expect(session.delivery.amount, 5);
       // tax/service default to built-in percentages
-      expect(session.tax.percent, 14);
-      expect(session.service.percent, 12);
+      expect(session.tax.hasValue, isFalse);
+      expect(session.service.hasValue, isFalse);
     });
 
     test('foodPrices keys are lowercased during decode', () {
@@ -139,12 +150,31 @@ void main() {
       expect(line.price, 0);
     });
 
+    test('partially migrated extras default missing fields safely', () {
+      final session = OrderSession.fromJson({
+        'id': 'partial',
+        'createdAt': '2026-01-01T00:00:00.000',
+        'people': <Map<String, dynamic>>[],
+        'lines': <Map<String, dynamic>>[],
+        'tip': {'amount': 12, 'usePercent': false},
+      });
+
+      expect(session.tip.amount, 12);
+      expect(session.delivery.hasValue, false);
+      expect(session.tax.hasValue, false);
+      expect(session.service.hasValue, false);
+    });
+
     test('snapshot creates independent deep copy', () {
       final session = OrderSession(
         id: 's_snap',
         createdAt: DateTime(2025, 1, 1),
-        people: const [Person(id: 'p1', name: 'Ali', emoji: '😎', colorValue: 0xFF000000)],
-        lines: const [OrderLine(id: 'l1', personId: 'p1', title: 'X', qty: 1, price: 10)],
+        people: const [
+          Person(id: 'p1', name: 'Ali', emoji: '😎', colorValue: 0xFF000000)
+        ],
+        lines: const [
+          OrderLine(id: 'l1', personId: 'p1', title: 'X', qty: 1, price: 10)
+        ],
       );
       final snap = session.snapshot();
       expect(snap.id, session.id);
@@ -175,13 +205,40 @@ void main() {
   // ── OrderSession computed properties ─────────────────────────────────
 
   group('OrderSession computed properties', () {
+    test('setFoodNote updates only the selected person food line', () {
+      final session = OrderSession(
+        id: 'notes',
+        createdAt: DateTime.now(),
+        people: const [],
+        lines: const [
+          OrderLine(id: 'l1', personId: 'p1', title: 'Burger'),
+          OrderLine(id: 'l2', personId: 'p2', title: 'Burger'),
+        ],
+      );
+
+      final updated = OrderStore.setFoodNote(
+        session,
+        'p1',
+        'burger',
+        '  no onions  ',
+      );
+
+      expect(updated.lines[0].note, 'no onions');
+      expect(updated.lines[1].note, isEmpty);
+    });
+
     test('isEmpty and hasContent', () {
-      final empty = OrderSession(id: 'e', createdAt: DateTime.now(), people: const [], lines: const []);
+      final empty = OrderSession(
+          id: 'e',
+          createdAt: DateTime.now(),
+          people: const [],
+          lines: const []);
       expect(empty.isEmpty, isTrue);
       expect(empty.hasContent, isFalse);
 
       final withPeople = OrderSession(
-        id: 'p', createdAt: DateTime.now(),
+        id: 'p',
+        createdAt: DateTime.now(),
         people: const [Person(id: 'p1', name: 'A', emoji: '', colorValue: 0)],
         lines: const [],
       );
@@ -189,7 +246,9 @@ void main() {
       expect(withPeople.hasContent, isTrue);
 
       final withLines = OrderSession(
-        id: 'l', createdAt: DateTime.now(), people: const [],
+        id: 'l',
+        createdAt: DateTime.now(),
+        people: const [],
         lines: const [OrderLine(id: 'l1', personId: 'p1', title: 'X', qty: 1)],
       );
       expect(withLines.isEmpty, isFalse);
@@ -198,7 +257,8 @@ void main() {
 
     test('linesFor filters by personId', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
           OrderLine(id: 'l1', personId: 'p1', title: 'A', qty: 1),
@@ -213,7 +273,8 @@ void main() {
 
     test('personTotal sums line totals for one person', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
           OrderLine(id: 'l1', personId: 'p1', title: 'A', qty: 2, price: 30),
@@ -227,7 +288,8 @@ void main() {
 
     test('priceForTitle looks up foodPrices then lines', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
           OrderLine(id: 'l1', personId: 'p1', title: 'Soup', qty: 1, price: 15),
@@ -241,11 +303,14 @@ void main() {
 
     test('aggregateFoods merges by lowercased title', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
-          OrderLine(id: 'l1', personId: 'p1', title: 'Koshary', qty: 2, price: 40),
-          OrderLine(id: 'l2', personId: 'p2', title: 'koshary', qty: 1, price: 40),
+          OrderLine(
+              id: 'l1', personId: 'p1', title: 'Koshary', qty: 2, price: 40),
+          OrderLine(
+              id: 'l2', personId: 'p2', title: 'koshary', qty: 1, price: 40),
           OrderLine(id: 'l3', personId: 'p1', title: 'Soup', qty: 1, price: 20),
         ],
       );
@@ -260,7 +325,8 @@ void main() {
 
     test('itemCount sums all line quantities', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
           OrderLine(id: 'l1', personId: 'p1', title: 'A', qty: 3),
@@ -271,18 +337,30 @@ void main() {
     });
 
     test('hasPlace checks groupId and groupName', () {
-      final noGroup = OrderSession(id: 's', createdAt: DateTime.now(), people: const [], lines: const []);
+      final noGroup = OrderSession(
+          id: 's',
+          createdAt: DateTime.now(),
+          people: const [],
+          lines: const []);
       expect(noGroup.hasPlace, isFalse);
 
       final withGroup = OrderSession(
-        id: 's', createdAt: DateTime.now(), people: const [], lines: const [],
-        groupId: 'custom_1', groupName: 'Food Court',
+        id: 's',
+        createdAt: DateTime.now(),
+        people: const [],
+        lines: const [],
+        groupId: 'custom_1',
+        groupName: 'Food Court',
       );
       expect(withGroup.hasPlace, isTrue);
 
       final freeform = OrderSession(
-        id: 's', createdAt: DateTime.now(), people: const [], lines: const [],
-        groupId: 'freeform', groupName: 'Freeform',
+        id: 's',
+        createdAt: DateTime.now(),
+        people: const [],
+        lines: const [],
+        groupId: 'freeform',
+        groupName: 'Freeform',
       );
       expect(freeform.hasPlace, isFalse);
     });
@@ -293,11 +371,13 @@ void main() {
   group('OrderStore.addFoodUnit', () {
     test('adds new line when person has no matching food', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [Person(id: 'p1', name: 'A', emoji: '', colorValue: 0)],
         lines: const [],
       );
-      final next = OrderStore.addFoodUnit(session, 'p1', 'Koshary', unitPrice: 40);
+      final next =
+          OrderStore.addFoodUnit(session, 'p1', 'Koshary', unitPrice: 40);
       expect(next.lines.length, 1);
       expect(next.lines[0].qty, 1);
       expect(next.lines[0].price, 40);
@@ -305,10 +385,12 @@ void main() {
 
     test('increments qty when person already has same food', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
-          OrderLine(id: 'l1', personId: 'p1', title: 'Koshary', qty: 1, price: 40),
+          OrderLine(
+              id: 'l1', personId: 'p1', title: 'Koshary', qty: 1, price: 40),
         ],
       );
       final next = OrderStore.addFoodUnit(session, 'p1', 'Koshary');
@@ -319,7 +401,8 @@ void main() {
 
     test('uses existing line price when no unitPrice given', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
           OrderLine(id: 'l1', personId: 'p1', title: 'X', qty: 1, price: 25),
@@ -331,10 +414,12 @@ void main() {
 
     test('case-insensitive food title matching', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
-          OrderLine(id: 'l1', personId: 'p1', title: 'Koshary', qty: 1, price: 40),
+          OrderLine(
+              id: 'l1', personId: 'p1', title: 'Koshary', qty: 1, price: 40),
         ],
       );
       final next = OrderStore.addFoodUnit(session, 'p1', 'koshary');
@@ -346,11 +431,14 @@ void main() {
   group('OrderStore.setFoodPrice', () {
     test('updates all matching lines and foodPrices map', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
-          OrderLine(id: 'l1', personId: 'p1', title: 'Koshary', qty: 2, price: 30),
-          OrderLine(id: 'l2', personId: 'p2', title: 'koshary', qty: 1, price: 30),
+          OrderLine(
+              id: 'l1', personId: 'p1', title: 'Koshary', qty: 2, price: 30),
+          OrderLine(
+              id: 'l2', personId: 'p2', title: 'koshary', qty: 1, price: 30),
           OrderLine(id: 'l3', personId: 'p1', title: 'Soup', qty: 1, price: 20),
         ],
       );
@@ -363,7 +451,8 @@ void main() {
 
     test('clamps negative prices to 0', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
           OrderLine(id: 'l1', personId: 'p1', title: 'X', qty: 1, price: 10),
@@ -378,7 +467,8 @@ void main() {
   group('OrderStore.undoFoodUnit', () {
     test('decrements qty when qty > 1', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
           OrderLine(id: 'l1', personId: 'p1', title: 'X', qty: 3, price: 10),
@@ -391,7 +481,8 @@ void main() {
 
     test('removes line when qty is 1', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
           OrderLine(id: 'l1', personId: 'p1', title: 'X', qty: 1, price: 10),
@@ -406,7 +497,8 @@ void main() {
 
     test('returns null when no matching line found', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
           OrderLine(id: 'l1', personId: 'p1', title: 'X', qty: 1, price: 10),
@@ -418,7 +510,8 @@ void main() {
 
     test('only decrements first matching line', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
           OrderLine(id: 'l1', personId: 'p1', title: 'X', qty: 2, price: 10),
@@ -438,8 +531,12 @@ void main() {
       final session = OrderSession(
         id: 's_persist',
         createdAt: DateTime(2025, 3, 10),
-        people: const [Person(id: 'p1', name: 'Ali', emoji: '😎', colorValue: 0xFF000000)],
-        lines: const [OrderLine(id: 'l1', personId: 'p1', title: 'X', qty: 2, price: 25)],
+        people: const [
+          Person(id: 'p1', name: 'Ali', emoji: '😎', colorValue: 0xFF000000)
+        ],
+        lines: const [
+          OrderLine(id: 'l1', personId: 'p1', title: 'X', qty: 2, price: 25)
+        ],
       );
       await OrderStore.saveCurrent(session, prefs);
       final loaded = await OrderStore.loadCurrent(prefs);
@@ -450,8 +547,10 @@ void main() {
 
     test('saveCurrent(null) removes current key', () async {
       final session = OrderSession(
-        id: 's_del', createdAt: DateTime.now(),
-        people: const [], lines: const [],
+        id: 's_del',
+        createdAt: DateTime.now(),
+        people: const [],
+        lines: const [],
       );
       await OrderStore.saveCurrent(session, prefs);
       await OrderStore.saveCurrent(null, prefs);
@@ -460,7 +559,11 @@ void main() {
     });
 
     test('saveCurrent skips empty sessions', () async {
-      final empty = OrderSession(id: 's_empty', createdAt: DateTime.now(), people: const [], lines: const []);
+      final empty = OrderSession(
+          id: 's_empty',
+          createdAt: DateTime.now(),
+          people: const [],
+          lines: const []);
       await OrderStore.saveCurrent(empty, prefs);
       final loaded = await OrderStore.loadCurrent(prefs);
       expect(loaded, isNull);
@@ -468,8 +571,16 @@ void main() {
 
     test('loadHistory + saveHistory round-trip', () async {
       final sessions = [
-        OrderSession(id: 's1', createdAt: DateTime(2025, 1, 1), people: const [], lines: const []),
-        OrderSession(id: 's2', createdAt: DateTime(2025, 2, 1), people: const [], lines: const []),
+        OrderSession(
+            id: 's1',
+            createdAt: DateTime(2025, 1, 1),
+            people: const [],
+            lines: const []),
+        OrderSession(
+            id: 's2',
+            createdAt: DateTime(2025, 2, 1),
+            people: const [],
+            lines: const []),
       ];
       await OrderStore.saveHistory(sessions, prefs);
       final loaded = await OrderStore.loadHistory(prefs);
@@ -480,13 +591,19 @@ void main() {
     test('loadHistory returns empty for corrupt data', () async {
       await prefs.setString('history', 'NOT JSON!!!');
       var corruptCalled = false;
-      final loaded = await OrderStore.loadHistory(prefs, () { corruptCalled = true; });
+      final loaded = await OrderStore.loadHistory(prefs, () {
+        corruptCalled = true;
+      });
       expect(loaded, isEmpty);
       expect(corruptCalled, isTrue);
     });
 
     test('pushHistory deduplicates by id', () async {
-      final session = OrderSession(id: 's_dup', createdAt: DateTime.now(), people: const [], lines: const []);
+      final session = OrderSession(
+          id: 's_dup',
+          createdAt: DateTime.now(),
+          people: const [],
+          lines: const []);
       final existing = [session]; // same id
       final result = await OrderStore.pushHistory(session, existing, prefs);
       expect(result.length, 1); // deduped
@@ -494,9 +611,12 @@ void main() {
 
     test('restoreAsCurrent generates new id', () async {
       final original = OrderSession(
-        id: 's_orig', createdAt: DateTime(2025, 1, 1),
+        id: 's_orig',
+        createdAt: DateTime(2025, 1, 1),
         people: const [Person(id: 'p1', name: 'A', emoji: '', colorValue: 0)],
-        lines: const [OrderLine(id: 'l1', personId: 'p1', title: 'X', qty: 1, price: 10)],
+        lines: const [
+          OrderLine(id: 'l1', personId: 'p1', title: 'X', qty: 1, price: 10)
+        ],
       );
       await OrderStore.restoreAsCurrent(original, prefs);
       final loaded = await OrderStore.loadCurrent(prefs);
@@ -511,7 +631,8 @@ void main() {
   group('OrderStore helpers', () {
     test('foodTitlesFromSession returns unique titles in order', () {
       final session = OrderSession(
-        id: 's', createdAt: DateTime.now(),
+        id: 's',
+        createdAt: DateTime.now(),
         people: const [],
         lines: const [
           OrderLine(id: 'l1', personId: 'p1', title: 'Koshary', qty: 1),
@@ -527,12 +648,17 @@ void main() {
 
     test('foodTitlesFromSession returns empty for null/empty', () {
       expect(OrderStore.foodTitlesFromSession(null), isEmpty);
-      final empty = OrderSession(id: 'e', createdAt: DateTime.now(), people: const [], lines: const []);
+      final empty = OrderSession(
+          id: 'e',
+          createdAt: DateTime.now(),
+          people: const [],
+          lines: const []);
       expect(OrderStore.foodTitlesFromSession(empty), isEmpty);
     });
 
     test('mergeFoods deduplicates case-insensitively', () {
-      final result = OrderStore.mergeFoods(['Koshary', 'Soup'], ['koshary', 'Fries']);
+      final result =
+          OrderStore.mergeFoods(['Koshary', 'Soup'], ['koshary', 'Fries']);
       expect(result.length, 3);
       expect(result, contains('Koshary'));
       expect(result, contains('Soup'));

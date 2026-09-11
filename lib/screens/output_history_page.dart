@@ -36,6 +36,22 @@ class OutputHistoryPage extends StatefulWidget {
   State<OutputHistoryPage> createState() => _OutputHistoryPageState();
 }
 
+class _WholeOrderFood {
+  const _WholeOrderFood({
+    required this.title,
+    required this.qty,
+    required this.unitPrice,
+    this.note,
+  });
+
+  final String title;
+  final int qty;
+  final double unitPrice;
+  final String? note;
+
+  double get lineTotal => unitPrice * qty;
+}
+
 class _OutputHistoryPageState extends State<OutputHistoryPage> {
   SharedPreferences? _prefs;
   OrderSession? _current;
@@ -123,7 +139,28 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
   }
 
   /// Round per-person grand totals to whole units when prices are on + setting.
-  bool _roundTotals(bool pricesOn) => pricesOn && AppSettings.instance.roundTotals;
+  bool _roundTotals(bool pricesOn) =>
+      pricesOn && AppSettings.instance.roundTotals;
+
+  List<_WholeOrderFood> _wholeOrderFoods(OrderSession session) {
+    final grouped = <String, _WholeOrderFood>{};
+    for (final line in session.lines) {
+      final note = line.note.trim();
+      final key = '${line.title.toLowerCase()}\u0000${note.toLowerCase()}';
+      final previous = grouped[key];
+      grouped[key] = _WholeOrderFood(
+        title: previous?.title ?? line.title,
+        qty: (previous?.qty ?? 0) + line.qty,
+        unitPrice:
+            (previous?.unitPrice ?? 0) > 0 ? previous!.unitPrice : line.price,
+        note: note.isEmpty ? null : note,
+      );
+    }
+    final foods = grouped.values.toList();
+    final withoutNotes = foods.where((food) => food.note == null);
+    final withNotes = foods.where((food) => food.note != null);
+    return [...withoutNotes, ...withNotes];
+  }
 
   String _formatSummary(OrderSession session) {
     final pricesOn = AppSettings.instance.pricesEnabled;
@@ -133,8 +170,9 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     if (session.hasPlace) buf.writeln(session.groupName);
     buf.writeln('────────────');
     buf.writeln(t.orderItemsTitle);
-    for (final a in session.aggregateFoods()) {
-      buf.writeln(t.foodUnitsLine(a.title, a.qty));
+    for (final a in _wholeOrderFoods(session)) {
+      final note = a.note == null ? '' : ' (${a.note})';
+      buf.writeln('${a.qty} | ${t.foodTitle(a.title)}$note');
     }
     buf.writeln('────────────');
     buf.writeln(t.whoOrderedTitle);
@@ -181,7 +219,9 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
 
     AppHaptics.selectionClick();
     final nameCtrl = TextEditingController(
-      text: session.groupName?.trim().isNotEmpty == true ? session.groupName!.trim() : '',
+      text: session.groupName?.trim().isNotEmpty == true
+          ? session.groupName!.trim()
+          : '',
     );
     String? name;
     try {
@@ -227,7 +267,8 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     // Prices from this order → bundle itemPrices (lowercase keys).
     final prices = <String, double>{
       for (final f in foods)
-        if (session.priceForTitle(f) > 0) f.toLowerCase(): session.priceForTitle(f),
+        if (session.priceForTitle(f) > 0)
+          f.toLowerCase(): session.priceForTitle(f),
     };
 
     if (match == null) {
@@ -263,10 +304,11 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     }
 
     final pricesOnly = match.withItemPrices(prices);
-    final pricesChanged = pricesOnly.itemPrices.length != match.itemPrices.length ||
-        prices.entries.any(
-          (e) => match.itemPrices[e.key] != e.value,
-        );
+    final pricesChanged =
+        pricesOnly.itemPrices.length != match.itemPrices.length ||
+            prices.entries.any(
+              (e) => match.itemPrices[e.key] != e.value,
+            );
 
     if (missing.isEmpty && !pricesChanged) {
       if (!mounted) return;
@@ -337,7 +379,8 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
   /// 'update' for “Update bundle”.
   String? _bundleActionFor(OrderSession session) {
     final name = session.groupName?.trim() ?? '';
-    final mixed = name == 'Mixed' || name == 'مختلط' || name == t.mixedBundleName.trim();
+    final mixed =
+        name == 'Mixed' || name == 'مختلط' || name == t.mixedBundleName.trim();
     if (mixed) return null;
 
     RestaurantGroup? match;
@@ -352,10 +395,12 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     }
     if (match == null) return 'create';
 
-    final ordered =
-        OrderStore.foodTitlesFromSession(session).map((f) => f.toLowerCase().trim()).toSet();
+    final ordered = OrderStore.foodTitlesFromSession(session)
+        .map((f) => f.toLowerCase().trim())
+        .toSet();
     final items = match.items
-        .where((i) => !AppValues.specialFoodKeys.contains(i.toLowerCase().trim()))
+        .where(
+            (i) => !AppValues.specialFoodKeys.contains(i.toLowerCase().trim()))
         .map((i) => i.toLowerCase().trim())
         .toSet();
     final added = ordered.difference(items);
@@ -380,7 +425,8 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     final mergedItems = OrderStore.mergeFoods(match.items, foods);
     final prices = <String, double>{
       for (final f in foods)
-        if (session.priceForTitle(f) > 0) f.toLowerCase(): session.priceForTitle(f),
+        if (session.priceForTitle(f) > 0)
+          f.toLowerCase(): session.priceForTitle(f),
     };
     var updated = match.copyWith(items: mergedItems);
     updated = updated.withItemPrices(prices);
@@ -434,7 +480,8 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('⚡ $remaining more swipe${remaining > 1 ? 's' : ''}...'),
+                content: Text(
+                    '⚡ $remaining more swipe${remaining > 1 ? 's' : ''}...'),
                 duration: const Duration(milliseconds: 800),
                 behavior: SnackBarBehavior.floating,
               ),
@@ -485,7 +532,8 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
     final scheme = theme.colorScheme;
     if (DebugRegistry.enabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        DebugRegistry.currentFile.value = 'lib/screens/output_history_page.dart';
+        DebugRegistry.currentFile.value =
+            'lib/screens/output_history_page.dart';
       });
     }
 
@@ -536,10 +584,13 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                   children: [
                                     Semantics(
                                       button: true,
-                                      label: MaterialLocalizations.of(context).backButtonTooltip,
+                                      label: MaterialLocalizations.of(context)
+                                          .backButtonTooltip,
                                       child: IconButton(
-                                        onPressed: () => Navigator.maybePop(context),
-                                        icon: const Icon(Icons.arrow_back_rounded),
+                                        onPressed: () =>
+                                            Navigator.maybePop(context),
+                                        icon: const Icon(
+                                            Icons.arrow_back_rounded),
                                       ),
                                     ),
                                     Expanded(
@@ -552,7 +603,8 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                     ),
                                   ],
                                 ),
-                                if (!_fromHistory) const WizardStepBar(currentStep: 3),
+                                if (!_fromHistory)
+                                  const WizardStepBar(currentStep: 3),
                               ],
                             ),
                           ),
@@ -579,7 +631,8 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                     title: strings.orderItemsTitle,
                                     subtitle: strings.orderItemsSubtitle,
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
                                       children: [
                                         if (current.hasPlace) ...[
                                           Align(
@@ -590,30 +643,36 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                                 size: 16,
                                               ),
                                               label: Text(current.groupName!),
-                                              visualDensity: VisualDensity.compact,
+                                              visualDensity:
+                                                  VisualDensity.compact,
                                               materialTapTargetSize:
-                                                  MaterialTapTargetSize.shrinkWrap,
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
                                             ),
                                           ),
                                           const SizedBox(height: 10),
                                         ],
-                                        if (current.aggregateFoods().isEmpty)
+                                        if (_wholeOrderFoods(current).isEmpty)
                                           Text(
                                             strings.emptyOrder,
-                                            style: theme.textTheme.bodyMedium?.copyWith(
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
                                               color: scheme.onSurfaceVariant,
                                             ),
                                           )
                                         else
-                                          for (final a in current.aggregateFoods()) ...[
+                                          for (final a
+                                              in _wholeOrderFoods(current)) ...[
                                             // Form: [ 2  Eggs     14 ] — qty, name, total
                                             _OrderItemRow(
                                               title: strings.foodTitle(a.title),
                                               qtyLabel: '${a.qty}',
                                               showPrice: pricesOn,
                                               priceLabel: pricesOn
-                                                  ? strings.formatAmount(a.lineTotal)
+                                                  ? strings
+                                                      .formatAmount(a.lineTotal)
                                                   : null,
+                                              noteLabel: a.note,
                                             ),
                                             const SizedBox(height: 8),
                                           ],
@@ -623,7 +682,8 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                             alignment: Alignment.centerRight,
                                             child: Text(
                                               '${strings.foodSubtotalLabel}: ${strings.money(current.orderTotal)}',
-                                              style: theme.textTheme.titleSmall?.copyWith(
+                                              style: theme.textTheme.titleSmall
+                                                  ?.copyWith(
                                                 fontWeight: FontWeight.w700,
                                               ),
                                             ),
@@ -638,7 +698,8 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                   Builder(
                                     builder: (context) {
                                       // Only people who actually ordered something.
-                                      final orderedPeople = current.peopleWithOrders;
+                                      final orderedPeople =
+                                          current.peopleWithOrders;
                                       final showMoney = pricesOn;
                                       return SectionCard(
                                         key: _whoOrderedKey,
@@ -646,40 +707,54 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                         child: orderedPeople.isEmpty
                                             ? Text(
                                                 strings.emptyOrder,
-                                                style: theme.textTheme.bodyMedium?.copyWith(
-                                                  color: scheme.onSurfaceVariant,
+                                                style: theme
+                                                    .textTheme.bodyMedium
+                                                    ?.copyWith(
+                                                  color:
+                                                      scheme.onSurfaceVariant,
                                                 ),
                                               )
                                             : Column(
-                                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
                                                 children: [
-                                                  for (final (i, p) in orderedPeople.indexed) ...[
+                                                  for (final (i, p)
+                                                      in orderedPeople
+                                                          .indexed) ...[
                                                     _PersonBlock(
                                                       person: p,
                                                       index: i,
-                                                      lines: current.linesFor(p.id),
-                                                      emptyLabel: strings.emptyOrder,
+                                                      lines: current
+                                                          .linesFor(p.id),
+                                                      emptyLabel:
+                                                          strings.emptyOrder,
                                                       showPrices: pricesOn,
                                                       extrasShare: pricesOn
-                                                          ? current.personExtrasShareFor(
+                                                          ? current
+                                                              .personExtrasShareFor(
                                                               p.id,
-                                                              round: _roundTotals(
+                                                              round:
+                                                                  _roundTotals(
                                                                 pricesOn,
                                                               ),
                                                             )
                                                           : 0,
                                                       totalLabel: showMoney
-                                                          ? strings.personTotalLabel(
-                                                              current.personGrandTotalFor(
+                                                          ? strings
+                                                              .personTotalLabel(
+                                                              current
+                                                                  .personGrandTotalFor(
                                                                 p.id,
-                                                                round: _roundTotals(
+                                                                round:
+                                                                    _roundTotals(
                                                                   pricesOn,
                                                                 ),
                                                               ),
                                                             )
                                                           : null,
                                                       session: current,
-                                                      roundTotals: _roundTotals(pricesOn),
+                                                      roundTotals: _roundTotals(
+                                                          pricesOn),
                                                     ),
                                                     const SizedBox(height: 12),
                                                   ],
@@ -693,28 +768,33 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                   // Actions
                                   Column(
                                     key: _actionsKey,
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
                                     children: [
                                       Row(
                                         children: [
                                           Expanded(
                                             child: FilledButton.icon(
                                               onPressed: () => _share(current),
-                                              icon: const Icon(Icons.ios_share_rounded),
+                                              icon: const Icon(
+                                                  Icons.ios_share_rounded),
                                               label: Text(strings.shareSummary),
                                             ),
                                           ),
-                                          if (_bundleActionFor(current) case final action?) ...[
+                                          if (_bundleActionFor(current)
+                                              case final action?) ...[
                                             const SizedBox(width: 6),
                                             Expanded(
                                               child: FilledButton.icon(
-                                                onPressed: () => action == 'update'
-                                                    ? _updateBundle(current)
-                                                    : _buildBundle(current),
+                                                onPressed: () =>
+                                                    action == 'update'
+                                                        ? _updateBundle(current)
+                                                        : _buildBundle(current),
                                                 icon: Icon(
                                                   action == 'update'
                                                       ? Icons.update_rounded
-                                                      : Icons.playlist_add_rounded,
+                                                      : Icons
+                                                          .playlist_add_rounded,
                                                   size: 20,
                                                 ),
                                                 label: Text(
@@ -731,13 +811,15 @@ class _OutputHistoryPageState extends State<OutputHistoryPage> {
                                       if (_fromHistory)
                                         FilledButton.tonalIcon(
                                           onPressed: () => _orderAgain(current),
-                                          icon: const Icon(Icons.replay_rounded),
+                                          icon:
+                                              const Icon(Icons.replay_rounded),
                                           label: Text(strings.orderAgainCta),
                                         )
                                       else
                                         FilledButton.tonalIcon(
                                           onPressed: _finishOrder,
-                                          icon: const Icon(Icons.check_circle_outline),
+                                          icon: const Icon(
+                                              Icons.check_circle_outline),
                                           label: Text(strings.finishOrder),
                                         ),
                                     ],
@@ -767,12 +849,14 @@ class _OrderItemRow extends StatelessWidget {
     required this.qtyLabel,
     required this.showPrice,
     this.priceLabel,
+    this.noteLabel,
   });
 
   final String title;
   final String qtyLabel;
   final bool showPrice;
   final String? priceLabel;
+  final String? noteLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -791,7 +875,11 @@ class _OrderItemRow extends StatelessWidget {
     );
 
     return Semantics(
-      label: showPrice && priceLabel != null ? '$qtyLabel $title $priceLabel' : '$qtyLabel $title',
+      label: [
+        '$qtyLabel $title',
+        if (noteLabel != null) noteLabel!,
+        if (showPrice && priceLabel != null) priceLabel!,
+      ].join(', '),
       child: Container(
         constraints: const BoxConstraints(minHeight: 48),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -805,19 +893,31 @@ class _OrderItemRow extends StatelessWidget {
             Text(qtyLabel, style: qtyStyle),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: nameStyle,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: nameStyle,
+                  ),
+                  if (noteLabel != null)
+                    Text(
+                      noteLabel!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                ],
               ),
             ),
             if (showPrice) ...[
               const SizedBox(width: 12),
-              Text(
-                priceLabel ?? '0',
-                style: priceStyle,
-              ),
+              Text(priceLabel ?? '0', style: priceStyle),
             ],
           ],
         ),
@@ -1056,16 +1156,26 @@ class _PersonBlock extends StatelessWidget {
 
     final items = <(IconData, String, String)>[];
     if (tipShare > 0) {
-      items.add((Icons.attach_money_rounded, t.tipLabel, t.formatAmount(tipShare)));
+      items.add(
+          (Icons.attach_money_rounded, t.tipLabel, t.formatAmount(tipShare)));
     }
     if (deliveryShare > 0) {
-      items.add((Icons.local_shipping_rounded, t.deliveryLabel, t.formatAmount(deliveryShare)));
+      items.add((
+        Icons.local_shipping_rounded,
+        t.deliveryLabel,
+        t.formatAmount(deliveryShare)
+      ));
     }
     if (taxShare > 0) {
-      items.add((Icons.receipt_long_rounded, t.taxLabel, t.formatAmount(taxShare)));
+      items.add(
+          (Icons.receipt_long_rounded, t.taxLabel, t.formatAmount(taxShare)));
     }
     if (serviceShare > 0) {
-      items.add((Icons.handshake_rounded, t.serviceLabel, t.formatAmount(serviceShare)));
+      items.add((
+        Icons.handshake_rounded,
+        t.serviceLabel,
+        t.formatAmount(serviceShare)
+      ));
     }
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -1082,7 +1192,8 @@ class _PersonBlock extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.receipt_rounded, size: 16, color: scheme.onInverseSurface),
+                Icon(Icons.receipt_rounded,
+                    size: 16, color: scheme.onInverseSurface),
                 const SizedBox(width: 8),
                 Text(
                   '${person.name} — ${t.extrasShareHint}',
@@ -1097,7 +1208,9 @@ class _PersonBlock extends StatelessWidget {
             for (final (i, item) in items.indexed) ...[
               Row(
                 children: [
-                  Icon(item.$1, size: 14, color: scheme.onInverseSurface.withValues(alpha: 0.7)),
+                  Icon(item.$1,
+                      size: 14,
+                      color: scheme.onInverseSurface.withValues(alpha: 0.7)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(

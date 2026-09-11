@@ -18,12 +18,15 @@ class FoodTile extends StatefulWidget {
     this.priceText,
     this.showPriceEdit = false,
     this.onEditPrice,
+    this.onEditNote,
+    this.hasNote = false,
     this.isCompact = false,
     this.crewIndexById = const {},
   });
 
   /// Food name only (one line — height stable when Prices toggles).
   final String title;
+
   /// e.g. `230 le` when Prices is on; shown trailing, not inside title.
   final String? priceText;
   final List<Person> assignees;
@@ -33,7 +36,10 @@ class FoodTile extends StatefulWidget {
   final VoidCallback onTap;
   final bool showPriceEdit;
   final VoidCallback? onEditPrice;
+  final VoidCallback? onEditNote;
+  final bool hasNote;
   final bool isCompact;
+
   /// Crew roster order (id → 0-based index) for roman-numeral icons.
   final Map<String, int> crewIndexById;
 
@@ -75,6 +81,36 @@ class _FoodTileState extends State<FoodTile>
     widget.onEditPrice!();
   }
 
+  void _editNote() {
+    if (widget.onEditNote == null) return;
+    AppHaptics.selectionClick();
+    widget.onEditNote!();
+  }
+
+  Widget _noteButton(ColorScheme scheme, Translate t) {
+    return SizedBox(
+      width: _editSlot,
+      height: _editSlot,
+      child: IconButton(
+        onPressed: _editNote,
+        tooltip: t.itemNote,
+        icon: Icon(
+          widget.hasNote
+              ? Icons.sticky_note_2_rounded
+              : Icons.note_add_outlined,
+          size: 19,
+          color: widget.hasNote ? scheme.primary : scheme.onSurfaceVariant,
+        ),
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(
+          minWidth: _editSlot,
+          minHeight: _editSlot,
+        ),
+        visualDensity: VisualDensity.compact,
+      ),
+    );
+  }
+
   String get _assigneeSignature {
     if (widget.assignees.isEmpty) return 'empty';
     return widget.assignees
@@ -89,10 +125,7 @@ class _FoodTileState extends State<FoodTile>
     final hasSelected = widget.selectedPersonId != null &&
         widget.assignees.any((p) => p.id == widget.selectedPersonId);
     final reduce = MediaQuery.disableAnimationsOf(context);
-    final iconMs =
-        reduce ? Duration.zero : AppValues.animIconPop;
-    final sizeMs =
-        reduce ? Duration.zero : AppValues.animNormal;
+    final iconMs = reduce ? Duration.zero : AppValues.animIconPop;
     final t = Translate.instance;
 
     final summaryParts = <String>[];
@@ -100,8 +133,10 @@ class _FoodTileState extends State<FoodTile>
       final q = widget.qtyByPerson[p.id] ?? 0;
       summaryParts.add('${p.name} $q');
     }
-    final assigneeLabel = summaryParts.isEmpty ? t.emptyOrder : summaryParts.join(', ');
-    final priceLabel = widget.priceText != null ? ', ${t.priceLabel} ${widget.priceText}' : '';
+    final assigneeLabel =
+        summaryParts.isEmpty ? t.emptyOrder : summaryParts.join(', ');
+    final priceLabel =
+        widget.priceText != null ? ', ${t.priceLabel} ${widget.priceText}' : '';
 
     return Semantics(
       label: '${widget.title}, $assigneeLabel$priceLabel',
@@ -147,7 +182,7 @@ class _FoodTileState extends State<FoodTile>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Fixed-height title row (name | price | edit slot).
+                    // Keep the price edit action in the compact title row.
                     SizedBox(
                       height: _editSlot,
                       child: Row(
@@ -173,10 +208,12 @@ class _FoodTileState extends State<FoodTile>
                                 color: scheme.primary,
                               ),
                             ),
-                          ] else if (widget.onEditPrice != null && !widget.showPriceEdit) ...[
+                          ] else if (widget.onEditPrice != null &&
+                              !widget.showPriceEdit) ...[
                             const SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.orange.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(4),
@@ -190,26 +227,25 @@ class _FoodTileState extends State<FoodTile>
                               ),
                             ),
                           ],
-                          // Always reserve edit slot so turning Prices on doesn't grow the card.
                           SizedBox(
                             width: _editSlot,
                             height: _editSlot,
-                            child: widget.showPriceEdit && widget.onEditPrice != null
+                            child: widget.showPriceEdit &&
+                                    widget.onEditPrice != null
                                 ? IconButton(
                                     onPressed: _editPrice,
                                     tooltip: t.editFoodPriceTitle,
-                                    icon: Icon(
+                                    icon: const Icon(
                                       Icons.edit_outlined,
                                       size: 20,
-                                      color: scheme.primary,
                                     ),
-                                    style: IconButton.styleFrom(
-                                      minimumSize:
-                                          const Size(_editSlot, _editSlot),
-                                      padding: EdgeInsets.zero,
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
+                                    color: scheme.primary,
+                                    constraints: const BoxConstraints(
+                                      minWidth: _editSlot,
+                                      minHeight: _editSlot,
                                     ),
+                                    padding: EdgeInsets.zero,
+                                    visualDensity: VisualDensity.compact,
                                   )
                                 : null,
                           ),
@@ -217,53 +253,78 @@ class _FoodTileState extends State<FoodTile>
                       ),
                     ),
                     if (!widget.isCompact)
-                      AnimatedSize(
-                        duration: sizeMs,
-                        curve: Curves.easeOutCubic,
-                        alignment: Alignment.topCenter,
-                        child: widget.assignees.isEmpty
-                            ? Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: Text(
-                                  widget.hint,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              )
-                            : Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: AnimatedSwitcher(
-                                  duration: iconMs,
-                                  switchInCurve: Curves.easeOutCubic,
-                                  switchOutCurve: Curves.easeInCubic,
-                                  transitionBuilder: (child, animation) => FadeTransition(
-                                    opacity: animation,
-                                    child: ScaleTransition(
-                                      scale: Tween<double>(begin: 0.88, end: 1).animate(animation),
-                                      child: child,
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 40),
+                        child: AnimatedSwitcher(
+                          duration: iconMs,
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          transitionBuilder: (child, animation) =>
+                              FadeTransition(
+                            opacity: animation,
+                            child: ScaleTransition(
+                              scale: Tween<double>(begin: 0.88, end: 1)
+                                  .animate(animation),
+                              child: child,
+                            ),
+                          ),
+                          child: widget.assignees.isEmpty
+                              ? Row(
+                                  key: const ValueKey('empty_hint'),
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        widget.hint,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  child: Wrap(
-                                    key: ValueKey(_assigneeSignature),
-                                    alignment: WrapAlignment.start,
-                                    spacing: 4,
-                                    runSpacing: 4,
+                                    if (widget.onEditNote != null)
+                                      _noteButton(scheme, t),
+                                  ],
+                                )
+                              : Padding(
+                                  key: ValueKey(_assigneeSignature),
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      for (final p in widget.assignees)
-                                        for (var i = 0; i < (widget.qtyByPerson[p.id] ?? 1); i++)
-                                          PersonFoodIcon(
-                                            key: ValueKey('${p.id}_$i'),
-                                            person: p,
-                                            index: widget.crewIndexById[p.id] ?? 0,
-                                            highlighted: p.id == widget.selectedPersonId,
-                                          ),
+                                      Expanded(
+                                        child: Wrap(
+                                          alignment: WrapAlignment.start,
+                                          spacing: 4,
+                                          runSpacing: 4,
+                                          children: [
+                                            for (final p in widget.assignees)
+                                              for (var i = 0;
+                                                  i <
+                                                      (widget.qtyByPerson[
+                                                              p.id] ??
+                                                          1);
+                                                  i++)
+                                                PersonFoodIcon(
+                                                  key: ValueKey('${p.id}_$i'),
+                                                  person: p,
+                                                  index: widget.crewIndexById[
+                                                          p.id] ??
+                                                      0,
+                                                  highlighted: p.id ==
+                                                      widget.selectedPersonId,
+                                                ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (widget.onEditNote != null)
+                                        _noteButton(scheme, t),
                                     ],
                                   ),
                                 ),
-                              ),
+                        ),
                       ),
                   ],
                 ),

@@ -44,8 +44,8 @@ class AppSettings extends ChangeNotifier {
 
   // ── Last-used extras values (persisted per field) ──────────────────
   ExtrasField _lastTip = const ExtrasField();
-  ExtrasField _lastTax = const ExtrasField(percent: 14, usePercent: true);
-  ExtrasField _lastService = const ExtrasField(percent: 12, usePercent: true);
+  ExtrasField _lastTax = const ExtrasField();
+  ExtrasField _lastService = const ExtrasField();
 
   ExtrasField get lastTip => _lastTip;
   ExtrasField get lastTax => _lastTax;
@@ -93,9 +93,9 @@ class AppSettings extends ChangeNotifier {
       _lastTip = _loadExtrasField(prefs, AppValues.prefsLastTip) ??
           const ExtrasField();
       _lastTax = _loadExtrasField(prefs, AppValues.prefsLastTax) ??
-          const ExtrasField(percent: 14, usePercent: true);
+          const ExtrasField();
       _lastService = _loadExtrasField(prefs, AppValues.prefsLastService) ??
-          const ExtrasField(percent: 12, usePercent: true);
+          const ExtrasField();
     } catch (_) {
       prefsLoadWarning = true;
     }

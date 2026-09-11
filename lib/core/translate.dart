@@ -170,6 +170,11 @@ class Translate {
 
   String get itemNote => _tr('Note (optional)', 'ملاحظة (اختياري)');
 
+  String get noteHint => _tr('e.g. no onions', 'مثال: من غير بصل');
+
+  String get assignBeforeNote => _tr('Add this food first, then add a note.',
+      'ضيف الأكل الأول، وبعدين اكتب الملاحظة.');
+
   String get ordersTitle => _tr('Who ordered what?', 'مين طلب إيه؟');
 
   String get ordersSubtitle => _tr(

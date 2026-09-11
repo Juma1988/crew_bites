@@ -211,6 +211,24 @@ abstract final class OrderStore {
     );
   }
 
+  /// Set a note for one person's food line.
+  static OrderSession setFoodNote(
+    OrderSession session,
+    String personId,
+    String foodTitle,
+    String note,
+  ) {
+    final key = foodTitle.toLowerCase();
+    final lines = [
+      for (final line in session.lines)
+        if (line.personId == personId && line.title.toLowerCase() == key)
+          line.copyWith(note: note.trim())
+        else
+          line,
+    ];
+    return session.copyWith(lines: lines, updatedAt: DateTime.now());
+  }
+
   /// Format number for display (no currency symbol — numbers only).
   static String formatPrice(double value) {
     if (value == value.roundToDouble()) return value.round().toString();

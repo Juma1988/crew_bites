@@ -933,6 +933,12 @@ class _ExtrasDialogState extends State<_ExtrasDialog> {
     final f = fields[cat]!;
     final hasVal = f.hasValue;
     final disabled = _disabledCategories.contains(cat);
+    final value = !disabled && _collapsedCategories.contains(cat) && hasVal
+        ? Translate.instance.money(
+            f.effectiveAmount(widget.orderTotal),
+            hideZero: true,
+          )
+        : '';
     return Material(
       color: Colors.transparent,
       child: Padding(
@@ -960,8 +966,21 @@ class _ExtrasDialogState extends State<_ExtrasDialog> {
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          _label(cat),
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(text: _label(cat)),
+                              if (value.isNotEmpty)
+                                TextSpan(
+                                  text: ' · $value',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 14,
