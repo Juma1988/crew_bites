@@ -1119,7 +1119,7 @@ class _PersonBlock extends StatelessWidget {
     final isEmoji = friendUsesEmoji(person, iconStyle);
 
     final paidColor = Colors.green.shade600;
-    final paidMuted = scheme.onSurfaceVariant.withValues(alpha: 0.72);
+    final paidMuted = scheme.onSurfaceVariant.withValues(alpha: 0.52);
 
     return GestureDetector(
       onDoubleTap: onPaidChanged == null ? null : () => onPaidChanged!(!isPaid),
@@ -1207,7 +1207,7 @@ class _PersonBlock extends StatelessWidget {
                         '${l.qty}',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: scheme.onSurfaceVariant,
+                          color: isPaid ? paidMuted : scheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -1244,21 +1244,21 @@ class _PersonBlock extends StatelessWidget {
                     Text(
                       t.extrasShareHint,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
+                        color: isPaid ? paidMuted : scheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(width: 4),
                     Icon(
                       Icons.info_outline_rounded,
                       size: 16,
-                      color: scheme.primary,
+                      color: isPaid ? paidMuted : scheme.primary,
                     ),
                     const Spacer(),
                     Text(
                       t.formatAmount(extrasShare),
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: scheme.primary,
+                        color: isPaid ? paidMuted : scheme.primary,
                       ),
                     ),
                   ],

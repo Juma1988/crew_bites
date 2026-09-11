@@ -69,3 +69,6 @@
 ## 2026-09-11 00:00 — Sora · Design — Removed paid green frame and muted paid totals
 - Released/Changed: Restored default card frame; paid content is gray with a subtle total strikethrough; green check avatar remains
 - Verified: flutter analyze and flutter test passed (141 tests)
+## 2026-09-11 00:00 — Sora · Design — Lightened paid-state gray and neutralized your share
+- Released/Changed: Paid details and your share now use lighter gray; green remains only on the check avatar
+- Verified: flutter analyze, flutter test (141 tests), and git diff --check passed
