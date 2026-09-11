@@ -378,6 +378,9 @@ class Translate {
   String paidStatusLabel(bool paid) =>
       paid ? _tr('Paid', 'دفع') : _tr('Mark as paid', 'علّم إنه دفع');
 
+  String get doubleTapToToggle =>
+      _tr('Double-tap the card to change', 'دوس مرتين على الكارت للتغيير');
+
   String foodUnitsLine(String food, int qty, {double? unitPrice}) {
     final title = foodTitle(food);
     if (unitPrice != null && unitPrice > 0) {

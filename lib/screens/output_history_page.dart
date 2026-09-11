@@ -1120,144 +1120,146 @@ class _PersonBlock extends StatelessWidget {
 
     final paidColor = Colors.green.shade600;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: person.color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: isPaid
-            ? Border.all(color: paidColor.withValues(alpha: 0.7), width: 2)
-            : BorderDirectional(
-                start: BorderSide(color: person.color, width: 4),
-              ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Tooltip(
-                message: t.paidStatusLabel(isPaid),
-                child: Semantics(
-                  button: onPaidChanged != null,
-                  label: '${person.name}, ${t.paidStatusLabel(isPaid)}',
-                  child: InkWell(
-                    onTap: onPaidChanged == null
-                        ? null
-                        : () => onPaidChanged!(!isPaid),
-                    borderRadius: BorderRadius.circular(24),
-                    child: CircleAvatar(
-                      radius: 14,
-                      backgroundColor: isPaid
-                          ? paidColor.withValues(alpha: 0.16)
-                          : person.color.withValues(alpha: 0.25),
-                      child: isPaid
-                          ? Icon(Icons.check_rounded,
-                              size: 18, color: paidColor)
-                          : Text(
-                              mark,
-                              style: TextStyle(
-                                fontSize: isEmoji ? 14 : 10,
-                                fontWeight: FontWeight.w800,
-                                color: isEmoji ? null : person.color,
+    return GestureDetector(
+      onDoubleTap: onPaidChanged == null ? null : () => onPaidChanged!(!isPaid),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: person.color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: isPaid
+              ? Border.all(color: paidColor.withValues(alpha: 0.7), width: 2)
+              : BorderDirectional(
+                  start: BorderSide(color: person.color, width: 4),
+                ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Tooltip(
+                  message:
+                      '${t.paidStatusLabel(isPaid)}. ${t.doubleTapToToggle}',
+                  child: Semantics(
+                    button: false,
+                    label: '${person.name}, ${t.paidStatusLabel(isPaid)}',
+                    child: InkWell(
+                      onTap: null,
+                      borderRadius: BorderRadius.circular(24),
+                      child: CircleAvatar(
+                        radius: 14,
+                        backgroundColor: isPaid
+                            ? paidColor.withValues(alpha: 0.16)
+                            : person.color.withValues(alpha: 0.25),
+                        child: isPaid
+                            ? Icon(Icons.check_rounded,
+                                size: 18, color: paidColor)
+                            : Text(
+                                mark,
+                                style: TextStyle(
+                                  fontSize: isEmoji ? 14 : 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: isEmoji ? null : person.color,
+                                ),
                               ),
-                            ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(person.name, style: theme.textTheme.titleSmall),
-              ),
-              if (totalLabel != null)
-                Text(
-                  totalLabel!,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: scheme.primary,
-                  ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(person.name, style: theme.textTheme.titleSmall),
                 ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          if (lines.isEmpty)
-            Text(
-              emptyLabel,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-            )
-          else
-            ...lines.map((l) {
-              final name = t.foodTitle(l.title);
-              final note = l.note.isEmpty ? '' : ' — ${l.note}';
-              // Same form as Whole order: `2  Eggs` [, price]
-              return Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Row(
-                  children: [
-                    Text(
-                      '${l.qty}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        '$name$note',
-                        style: theme.textTheme.bodyMedium,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (showPrices) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        t.formatAmount(l.lineTotal),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: scheme.primary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              );
-            }),
-          if (showPrices && extrasShare > 0) ...[
-            const SizedBox(height: 6),
-            GestureDetector(
-              onTap: () => _showExtrasInfo(context),
-              child: Row(
-                children: [
+                if (totalLabel != null)
                   Text(
-                    t.extrasShareHint,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 16,
-                    color: scheme.primary,
-                  ),
-                  const Spacer(),
-                  Text(
-                    t.formatAmount(extrasShare),
-                    style: theme.textTheme.bodySmall?.copyWith(
+                    totalLabel!,
+                    style: theme.textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w800,
                       color: scheme.primary,
                     ),
                   ),
-                ],
-              ),
+              ],
             ),
+            const SizedBox(height: 6),
+            if (lines.isEmpty)
+              Text(
+                emptyLabel,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              )
+            else
+              ...lines.map((l) {
+                final name = t.foodTitle(l.title);
+                final note = l.note.isEmpty ? '' : ' — ${l.note}';
+                // Same form as Whole order: `2  Eggs` [, price]
+                return Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${l.qty}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '$name$note',
+                          style: theme.textTheme.bodyMedium,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (showPrices) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          t.formatAmount(l.lineTotal),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: scheme.primary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }),
+            if (showPrices && extrasShare > 0) ...[
+              const SizedBox(height: 6),
+              GestureDetector(
+                onTap: () => _showExtrasInfo(context),
+                child: Row(
+                  children: [
+                    Text(
+                      t.extrasShareHint,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: scheme.primary,
+                    ),
+                    const Spacer(),
+                    Text(
+                      t.formatAmount(extrasShare),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: scheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

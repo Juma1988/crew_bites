@@ -63,3 +63,6 @@
 ## 2026-09-11 00:00 — Rei · Publishing — Listed Android signing backup files
 - Released/Changed: No files changed; documented keystore, certificate, and password backup locations
 - Verified: Current generated files are at project root and key.properties is not yet created
+## 2026-09-11 00:00 — Sora · Design — Moved payment toggle to person-card double tap
+- Released/Changed: Paid state now toggles by double-tapping anywhere on the person card; avatar is visual status with tooltip
+- Verified: flutter analyze and flutter test passed (141 tests); signing files intentionally excluded

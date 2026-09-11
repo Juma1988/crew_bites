@@ -132,18 +132,21 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byTooltip('علّم إنه دفع'), findsOneWidget);
-    await tester.tap(find.byTooltip('علّم إنه دفع'));
+    expect(find.byTooltip('علّم إنه دفع. دوس مرتين على الكارت للتغيير'),
+        findsOneWidget);
+    await tester.tap(find.text('Ali').first);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.text('Ali').first);
     await tester.pumpAndSettle();
 
     expect(
       find.descendant(
-        of: find.byTooltip('دفع'),
+        of: find.byTooltip('دفع. دوس مرتين على الكارت للتغيير'),
         matching: find.byIcon(Icons.check_rounded),
       ),
       findsOneWidget,
     );
-    expect(find.byTooltip('دفع'), findsOneWidget);
+    expect(find.byTooltip('دفع. دوس مرتين على الكارت للتغيير'), findsOneWidget);
     expect((await OrderStore.loadCurrent(prefs))?.isPersonPaid('p1'), isTrue);
   });
 
