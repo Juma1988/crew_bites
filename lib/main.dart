@@ -24,10 +24,12 @@ class App101 extends StatelessWidget {
       listenable: AppSettings.instance,
       builder: (context, _) {
         final settings = AppSettings.instance;
+        final debugToolsEnabled =
+            DebugRegistry.enabled && settings.debugOverlayEnabled;
         return MaterialApp(
           navigatorKey: AppNavigator.key,
           title: AppTheme.brandName,
-          debugShowCheckedModeBanner: true,
+          debugShowCheckedModeBanner: debugToolsEnabled,
           locale: settings.locale,
           supportedLocales: appSupportedLocales,
           localizationsDelegates: appLocalizationsDelegates,
@@ -38,7 +40,7 @@ class App101 extends StatelessWidget {
             return Directionality(
               textDirection: settings.textDirection,
               child: DebugOverlay(
-                enabled: DebugRegistry.enabled && settings.debugOverlayEnabled,
+                enabled: debugToolsEnabled,
                 child: child ?? const SizedBox.shrink(),
               ),
             );
