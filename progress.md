@@ -66,3 +66,6 @@
 ## 2026-09-11 00:00 — Sora · Design — Moved payment toggle to person-card double tap
 - Released/Changed: Paid state now toggles by double-tapping anywhere on the person card; avatar is visual status with tooltip
 - Verified: flutter analyze and flutter test passed (141 tests); signing files intentionally excluded
+## 2026-09-11 00:00 — Sora · Design — Removed paid green frame and muted paid totals
+- Released/Changed: Restored default card frame; paid content is gray with a subtle total strikethrough; green check avatar remains
+- Verified: flutter analyze and flutter test passed (141 tests)

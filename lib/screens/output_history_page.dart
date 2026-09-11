@@ -1119,6 +1119,7 @@ class _PersonBlock extends StatelessWidget {
     final isEmoji = friendUsesEmoji(person, iconStyle);
 
     final paidColor = Colors.green.shade600;
+    final paidMuted = scheme.onSurfaceVariant.withValues(alpha: 0.72);
 
     return GestureDetector(
       onDoubleTap: onPaidChanged == null ? null : () => onPaidChanged!(!isPaid),
@@ -1127,11 +1128,9 @@ class _PersonBlock extends StatelessWidget {
         decoration: BoxDecoration(
           color: person.color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(16),
-          border: isPaid
-              ? Border.all(color: paidColor.withValues(alpha: 0.7), width: 2)
-              : BorderDirectional(
-                  start: BorderSide(color: person.color, width: 4),
-                ),
+          border: BorderDirectional(
+            start: BorderSide(color: person.color, width: 4),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1169,14 +1168,20 @@ class _PersonBlock extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(person.name, style: theme.textTheme.titleSmall),
+                  child: Text(
+                    person.name,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: isPaid ? paidMuted : null,
+                    ),
+                  ),
                 ),
                 if (totalLabel != null)
                   Text(
                     totalLabel!,
                     style: theme.textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: scheme.primary,
+                      color: isPaid ? paidMuted : scheme.primary,
+                      decoration: isPaid ? TextDecoration.lineThrough : null,
                     ),
                   ),
               ],
@@ -1186,7 +1191,7 @@ class _PersonBlock extends StatelessWidget {
               Text(
                 emptyLabel,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
+                  color: isPaid ? paidMuted : scheme.onSurfaceVariant,
                 ),
               )
             else
@@ -1209,7 +1214,9 @@ class _PersonBlock extends StatelessWidget {
                       Expanded(
                         child: Text(
                           '$name$note',
-                          style: theme.textTheme.bodyMedium,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: isPaid ? paidMuted : null,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1220,7 +1227,7 @@ class _PersonBlock extends StatelessWidget {
                           t.formatAmount(l.lineTotal),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w800,
-                            color: scheme.primary,
+                            color: isPaid ? paidMuted : scheme.primary,
                           ),
                         ),
                       ],
